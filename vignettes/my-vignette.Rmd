@@ -4,55 +4,72 @@ author: "Mark Dane"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{GAL File Parsing}
-  %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+%\VignetteIndexEntry{GAL File Parsing}
+%\VignetteEngine{knitr::rmarkdown}
+\usepackage[utf8]{inputenc}
 ---
+This vignette uses the R MEMA package to preprocess, normalize and analyze a breast cancer dataset. 
 
-Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
+## Dataset Description
 
-- Never uses retina figures
-- Has a smaller default figure size
-- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
+HCC1954 cells grown on 88 different microenvironment under normal and low serum conditions while exposed to DMSO or Lapatinib.
 
-## Vignette Info
+## Staining
 
-Note the various macros within the `vignette` setion of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
+After 72 hours of incubation, the cells were fixed, stained and imaged. 
 
-## Styles
+## Spot Content Metadata
 
-The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
+Processing begins with reading in the gal file. The gal file lists the contents of each spot in the printer coordinates of block, row and column. In this array, there are 48 blocks, each with 5 rows and 5 columns for a total of 1200 spots.
 
-    output: 
-      rmarkdown::html_vignette:
-        css: mystyles.css
+The Olympus Scan^R high content analaysis microscope operates in the array space of 60 rows and 20 columns. The readSpotMetadata function assigns an ArrayRow and ArrayColumn value to each spot, connecting the print space to the image space.
 
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
+```{r}
+    
+    galDF <- readSpotMetadata("~/Documents/MEMATestExp/LI4V008/Raw Data and Metadata/20150225_LI4V008_AllECMs.gal")
+    galDT <- data.table(galDF)
+    
 ```
 
-You can enable figure captions by `fig_caption: yes` in YAML:
-
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
-
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
-
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
+The Name field of the gal file holds the ME contents at each spot. This early version gal file is not in the correct format so a custom function is called to coerce it into the standard format. To enable the visualization with ggplot, a short name is created from the first protein and a logical factor showing if Collagen I is present in the spot are both added to the datatable.
+    
+    
+```{r}
+    galDT<-coerceAllECM(galDT)
+    galDT$ShortName <- gsub("_.*","",galDT$Name)
+    galDT$COL1 <- grepl("COL1", galDT$Name)
+    
 ```
-
-Also a quote using `>`:
-
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
+    
+The pseudo-image shows the layout of the contents of the gal file. This image shows that the All ECM arrays contain spots with 44 different ECM proteins printed with and without Collagen I. The ECM proteins are grouped into type A and type B print blocks. Each print block type has 21 unique ECM proteins and two common controls. There are 12 blocks of each type printed with the ECM proteins printed alone and twelve printed with Collagen I.
+    
+The arrays were printed from three manually prepared source plates. The print position within each block was randomized except for leaving spot 4,4 in each print block blank. 
+    
+```{r, fig.width=6,fig.height=7}
+    
+    p <- ggplot(galDT,aes(x = ArrayColumn, y = ArrayRow, fill=ShortName, colour=COL1))+
+    geom_point(shape = 21,size = 3)+
+    scale_colour_manual(values=c("transparent","black"))+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text=element_text(size=7))+
+    scale_y_reverse()+
+    ggtitle("All ECMs Array Layout")
+    
+    print(p)
+    
+```
+## Print Order
+    
+The printer stores the print order and deposition number in an XML file. This file is read in using routines from the XML package and merged in with the gal file data.
+    
+    
+```{r}
+    ldf<-readLogData("~/Documents/MEMATestExp/LI4V008/Raw Data and Metadata/20150224-152101.XML")
+    setkey(ldf, Row, Column)
+    setkey(galDT,Row,Column)
+    galDT<- ldf[galDT]
+    
+```
+    
+    
+    

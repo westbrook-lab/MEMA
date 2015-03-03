@@ -263,7 +263,7 @@ readLogData<-function(logFile){
   #Read in a Aushon XML log file to get the deposition counts
   data<-xmlParse(logFile)
   dataList<-xmlToList(data)
-  names(dataList)
+  #names(dataList)
   #Only keep the sample attributes
   dataList<-dataList[names(dataList)=="Sample"]
   #Bind the XML data into a data table
@@ -279,7 +279,7 @@ readLogData<-function(logFile){
   data$PrintOrder<-1:nrow(data)
   setkey(data,"PrintOrder")
   #Remove unneeded columns
-  data<-data[,list(Row, Column,PrintOrder,Depositions)]
+  data <- data[,c("Row","Column","PrintOrder","Depositions"), with=FALSE]
   return(data)
 }
 

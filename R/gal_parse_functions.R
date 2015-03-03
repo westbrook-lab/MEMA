@@ -163,17 +163,20 @@ parseSimulatedContents <- function(dt){
 #'
 #'@param df A dataframe read from a gal file
 #'@return A dataframe with the Name column reformatted to match the Controlled Vocabulary standard.
-coerceAllECM <- function( df){
+coerceAllECM <- function(df){
   df$Name <- gsub("__","_",df$Name)
-  df$Name <- gsub("COL I","COL1_UNKNOWN",df$Name)
   df$Name <- gsub("PBSCOL I","PBS_none_COL1_UNKNOWN",df$Name)
+  df$Name <- gsub("^PBS$","PBS_none",df$Name)
+  df$Name <- gsub("COL I$","COL1_UNKNOWN",df$Name)
+  df$Name <- gsub("^-$","blank_none",df$Name)
+
   contentMatrix <- strsplit2(x = df$Name,split="_")
 
   df$Name <- apply(contentMatrix,1,function(x){
     pUIDs <- paste0(x[seq(1,length(x),2)],"_",x[seq(2,length(x),2)])
     pUIDs <- gsub("^_$","",pUIDs)
-    pUID <- paste0(pUIDs,collapse="|")
-    pUID <- gsub("[|]*$","",pUID)
+    pUID <- paste0(pUIDs,collapse="-")
+    pUID <- gsub("[-]*$","",pUID)
   }
   )
   return(df)
@@ -199,3 +202,4 @@ parseCVContents <- function(dt){
     paste(ECMNames,collapse="_")
   })
 }
+
