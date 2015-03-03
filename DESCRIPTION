@@ -1,10 +1,16 @@
 Package: MEMA
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1
+Title: This package provides functions to preprocess MEMA data
+Version: 0.0.0.9000
 Date: 2015-02-11
-Author: Your name goes here
-Maintainer: person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Authors@R: person("Mark", "Dane", ,"dane@ohsu.edu", role = c("aut", "cre"))
+Description: The functions in this package merge imaging data with the metadata, normalize the data, summarize to the well and spot level and provide some quality measures.
+License: License: MIT + file LICENSE
 LazyData: TRUE
+Imports: data.table,
+    gdata(>= 2.13.3),
+    limma (>= 3.20.9),
+    reshape2(>= 1.4.1),
+    XML(>= 3.98-1.1)
+Suggests: knitr
+VignetteBuilder: knitr
