@@ -1,14 +1,29 @@
 ---
-title: "GAL File Parsing"
+title: "MEMA Analysis Pipeline"
 author: "Mark Dane"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{GAL File Parsing}
+  %\VignetteIndexEntry{MEMA Analysis Pipeline}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
 This vignette uses the R MEMA package to preprocess, normalize and analyze a breast cancer dataset. 
+
+## Load Dependencies
+
+The MEMA package depends on the following packages which must be loaded.
+
+```{r}
+library(MEMA) 
+library(data.table)
+library(limma)
+library(ggplot2)
+library(XML)
+library(mclust)
+
+```
+
 
 ## Dataset Description
 
@@ -22,26 +37,28 @@ After 72 hours of incubation, the cells were fixed, stained and imaged.
 
 Processing begins with reading in the gal file. The gal file lists the contents of each spot in the printer coordinates of block, row and column. In this array, there are 48 blocks, each with 5 rows and 5 columns for a total of 1200 spots.
 
-The Olympus Scan^R high content analaysis microscope operates in the array space of 60 rows and 20 columns. The readSpotMetadata function assigns an ArrayRow and ArrayColumn value to each spot, connecting the print space to the image space.
+The Olympus Scan^R high content analysis microscope operates in the array space of rows and columns. The readSpotMetadata function assigns an ArrayRow and ArrayColumn value to each spot, connecting the print space to the image space.
 
 ```{r}
-    
-    galDF <- readSpotMetadata("~/Documents/MEMATestExp/LI4V008/Raw Data and Metadata/20150225_LI4V008_AllECMs.gal")
-    galDT <- data.table(galDF)
+
+     galDF <- readSpotMetadata("~/Documents/MEMATestExp/LI4V008/Raw Data and Metadata/20150225_LI4V008_AllECMs.gal")
+     galDT <- data.table(galDF)
+     head(galDT)
     
 ```
 
-The Name field of the gal file holds the ME contents at each spot. This early version gal file is not in the correct format so a custom function is called to coerce it into the standard format. To enable the visualization with ggplot, a short name is created from the first protein and a logical factor showing if Collagen I is present in the spot are both added to the datatable.
+The Name field of the gal file holds the microenvironment (ME) contents at each spot. This early version gal file is not in the correct format so a custom function is called to coerce it into the standard format. To enable the visualization with ggplot, a short name is created from the first protein and a logical factor showing the presence of Collagen I are both added to the datatable.
     
     
 ```{r}
     galDT<-coerceAllECM(galDT)
     galDT$ShortName <- gsub("_.*","",galDT$Name)
     galDT$COL1 <- grepl("COL1", galDT$Name)
+    head(galDT)
     
 ```
     
-The pseudo-image shows the layout of the contents of the gal file. This image shows that the All ECM arrays contain spots with 44 different ECM proteins printed with and without Collagen I. The ECM proteins are grouped into type A and type B print blocks. Each print block type has 21 unique ECM proteins and two common controls. There are 12 blocks of each type printed with the ECM proteins printed alone and twelve printed with Collagen I.
+The pseudo-image shows the layout of the contents of the gal file. This image shows that the All ECM arrays contain spots with 41 different ECM proteins printed with and without Collagen I. The ECM proteins are grouped into type A and type B print blocks. Each print block type has 20 unique ECM proteins and four common controls. There are 12 blocks of each type printed with the ECM proteins printed alone and twelve printed with Collagen I.
     
 The arrays were printed from three manually prepared source plates. The print position within each block was randomized except for leaving spot 4,4 in each print block blank. 
     
@@ -68,6 +85,7 @@ The printer stores the print order and deposition number in an XML file. This fi
     setkey(ldf, Row, Column)
     setkey(galDT,Row,Column)
     galDT<- ldf[galDT]
+    head(galDT)
     
 ```
     

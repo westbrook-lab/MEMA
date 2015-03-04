@@ -1,0 +1,12 @@
+citHeader("To cite MEMA in publications use:")
+
+citEntry(entry = "Misc",
+  title        = "Microenvironment Microarray Preprocessing and Analysis",
+  author       = personList(as.person("Mark Dane")),
+  year         = "2015",
+  note         = "Released as a package only.",
+
+  textVersion  =
+  paste("Mark Dane (2015)",
+         "Microenvironment Microarray Preprocessing and Analysis")
+)

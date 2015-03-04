@@ -5,13 +5,15 @@ Version: 0.0.0.9000
 Date: 2015-02-11
 Authors@R: person("Mark", "Dane", ,"dane@ohsu.edu", role = c("aut", "cre"))
 Description: The functions in this package merge imaging data with the metadata, normalize the data, summarize to the well and spot level and provide some quality measures.
-License: License: MIT + file LICENSE
+License: MIT + file LICENSE
 LazyData: TRUE
 Imports: data.table,
     gdata(>= 2.13.3),
     ggplot2,
     limma (>= 3.20.9),
     reshape2(>= 1.4.1),
-    XML(>= 3.98-1.1)
-Suggests: knitr
+    XML(>= 3.98-1.1),
+    mclust
+Suggests: knitr,
+    testthat
 VignetteBuilder: knitr
