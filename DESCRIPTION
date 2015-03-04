@@ -9,9 +9,9 @@ License: License: MIT + file LICENSE
 LazyData: TRUE
 Imports: data.table,
     gdata(>= 2.13.3),
+    ggplot2,
     limma (>= 3.20.9),
     reshape2(>= 1.4.1),
-    XML(>= 3.98-1.1),
-    ggplot2
+    XML(>= 3.98-1.1)
 Suggests: knitr
 VignetteBuilder: knitr

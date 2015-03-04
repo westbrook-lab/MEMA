@@ -7,7 +7,7 @@
 parseCVContents(dt)
 }
 \arguments{
-\item{dt}{A dataframe or datatable with a Name column to be parsed}
+\item{dt}{A dataframe or datatable with a Name column to be parsed.}
 }
 \value{
 The input datatable with a new column of the ECM names pasted
@@ -18,8 +18,8 @@ The input datatable with a new column of the ECM names pasted
 column.
 }
 \section{Usage}{
- This functions assumes a Name column exists and uses a pipe
- symbol | as a field separator between each protein and an underscore between
+ This functions assumes a Name column exists and uses a dash
+ symbol - as a field separator between each protein and an underscore between
  a protein's name and its Uniprot ID.
 }
 

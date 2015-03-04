@@ -4,9 +4,9 @@ author: "Mark Dane"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-%\VignetteIndexEntry{GAL File Parsing}
-%\VignetteEngine{knitr::rmarkdown}
-\usepackage[utf8]{inputenc}
+  %\VignetteIndexEntry{GAL File Parsing}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
 ---
 This vignette uses the R MEMA package to preprocess, normalize and analyze a breast cancer dataset. 
 

@@ -15,8 +15,8 @@
 readSpotMetadata <- function(galFile) {
   #Read the GAL file
   #browser()
-  df <- readGAL(galFile)
-  layout <- getLayout(df)
+  df <- limma::readGAL(galFile)
+  layout <- limma::getLayout(df)
   nrCols <- layout$nspot.c*layout$ngrid.c
   nrRows <- layout$nspot.r*layout$ngrid.r
   colnames(df)[colnames(df) == "Block"] <- "Grid"
@@ -39,8 +39,8 @@ readSpotMetadata <- function(galFile) {
 #'  The MISVIK gal file has only 2 print blocks per row.
 readSpotMetadataMISVIK <- function(galFile){
   #Read the GAL file
-  df <- readGAL(galFile)
-  layout <- getLayout(df)
+  df <- limma::readGAL(galFile)
+  layout <- limma::getLayout(df)
   nrCols <- layout$nspot.c*layout$ngrid.c
   nrRows <- layout$nspot.r*layout$ngrid.r
   colnames(df)[colnames(df) == "Block"] <- "Grid"
@@ -128,7 +128,7 @@ parse4wellvalidationContents <- function(dt){
     return(list(ECM = n[[1]], Gycerol = n[[2]],Triton = n[[3]],EDTA = n[[4]],Buffer = n[[5]]))
   }
   )
-  contents <- rbindlist(contentList)
+  contents <- data.table::rbindlist(contentList)
   dtA <- cbind(dt,contents)
   return(dtA)
 }
@@ -153,7 +153,7 @@ parseSimulatedContents <- function(dt){
   }
 
   )
-  contents <- rbindlist(contentList)
+  contents <- data.table::rbindlist(contentList)
   dtA <- cbind(dt,contents)
 }
 
@@ -187,15 +187,15 @@ coerceAllECM <- function(df){
 #'\code{parseCVContents} returns a datatable with new columns based on the Name
 #'column.
 #'
-#'@param dt A dataframe or datatable with a Name column to be parsed
+#'@param dt A dataframe or datatable with a Name column to be parsed.
 #'@return The input datatable with a new column of the ECM names pasted
 #'  togethers with an underscore.
-#'@section Usage: This functions assumes a Name column exists and uses a pipe
-#'  symbol | as a field separator between each protein and an underscore between
+#'@section Usage: This functions assumes a Name column exists and uses a dash
+#'  symbol - as a field separator between each protein and an underscore between
 #'  a protein's name and its Uniprot ID.
 parseCVContents <- function(dt){
   dt$ECM <- lapply(dt$Name,function(x){
-    tmp<-strsplit(unlist(strsplit(x,split = "[|]")),split="_")
+    tmp<-strsplit(unlist(strsplit(x,split = "[-]")),split="_")
     ECMNames<-lapply(tmp, function(x){
       x[1]
     })

@@ -4,14 +4,6 @@
 #Updating 1/14/2015
 
 
-library(data.table)
-library(ggplot2)
-library(gdata) #read xlx files
-library(limma) #to read and convert GAL files
-library(reshape2) #convert datatable formats through melt and cast
-library(XML)
-library(parallel)
-
 #Functions####
 cleanDT <- function (DT) {
   return(DT)
