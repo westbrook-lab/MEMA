@@ -79,7 +79,7 @@ annDTList <- lapply(barcodes, function(barcode){
   #Organize the data by well
   popData <- MEMA::melt8Well(popDataRaw)
   #Save for use inside the MEMA package
-  use_data(popData)
+  use_data(popData,overwrite = TRUE)
   
   setnames(popData,"Grid","Block")
   popData$Well <- gsub("A","T",popData$Well)

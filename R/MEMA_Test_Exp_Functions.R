@@ -6,16 +6,41 @@
 
 #Functions####
 
-#' Empty function
-#'  @export
-cleanDT <- function (DT) {
-  return(DT)
+#'Read metadata from a multi-sheet excel file
+#'
+#' \code{readMetadata} reads well level metadata from an excel file. Each sheet in the file represents a different data type. The name of the sheet will become the name of the column. The contents in the sheet will become the data values. Each sheet is foramtted to match a well plate with the A01 well in the upper left corner. First row and column of each sheet are left as labels. The values start in the second row and column.
+#' @param xlsfile The name of the excel file.
+#' @return a data frame with the data values from each sheet in a column with the name of the sheet.
+#' @export
+readMetadata<-function(xlsFile){
+  #browser()
+  sheetList<-sapply(gdata::sheetNames(xlsFile), gdata::read.xls, xls = xlsFile, simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
+  nrRows<-dim(sheetList[[1]])[1]
+  nrCols<-dim(sheetList[[1]])[2]
+  nrWells=nrRows*nrCols
+  sheetDF<-data.frame(lapply(sheetList,function(df,nrCols){
+    #create a dataframe from all rows and columns of each sheet
+    dfM<-matrix(t(df[,1:nrCols]),byrow=TRUE)
+  }, nrCols=nrCols),WellIndex=1:nrWells,Well=wellAN(nrRows,nrCols),check.names=TRUE, stringsAsFactors=FALSE)
+  return(sheetDF)
 }
 
-#' Calculate Coefficient of Variation
+
+#' Calculate Coefficient of Variation (CV)
+#'
+#'Calculates the CV of a numeric vector as the standard deviation over the mean. All NA values are removed from the input vector.
+#'@param x A numeric vector.
+#'@return The CV of the non-na values in the x.
+#'
 #'  @export
 CV <- function(x){
   sd(x, na.rm=TRUE)/mean(x, na.rm=TRUE)
+}
+
+#' Empty function
+#'
+cleanDT <- function (DT) {
+  return(DT)
 }
 
 #' Extract Intensity Endpoints
@@ -115,7 +140,7 @@ summarizeToSpot<-function(cd){
 }
 
 #' Summarize the cell level data to the well level
-#' @export
+#'
 wellLevelData<-function(cd){
   #browser()
   #Create a datatable of the columns to be summariazed
@@ -138,7 +163,7 @@ wellLevelData<-function(cd){
 }
 
 #' Returns a character vector of alphanumeric well names
-#' @export
+#'
 wellAN<-function(nrRows,nrCols){
   if(nrRows>702)stop("Too many rows to convert. Well alphanumerics are limited to 2 letters")
   Well=unlist(c(lapply(1:nrRows, function(x){
@@ -152,25 +177,10 @@ wellAN<-function(nrRows,nrCols){
 }
 
 #' Change the periods in the column names to spaces
-#' @export
+#'
 cleanColumnNames<-function(dt){
   data.table::setnames(dt,gsub("[.]"," ",make.names(colnames(dt))))
   return(dt)
-}
-
-#' Read metadata from a multi-sheet excel file
-#' @export
-readMetadata<-function(xlsFile){
-  #browser()
-  sheetList<-sapply(gdata::sheetNames(xlsFile), gdata::read.xls, xls = xlsFile, simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
-  nrRows<-dim(sheetList[[1]])[1]
-  nrCols<-dim(sheetList[[1]])[2]
-  nrWells=nrRows*nrCols
-  sheetDF<-data.frame(lapply(sheetList,function(df,nrCols){
-    #create a dataframe from all rows and columns of each sheet
-    dfM<-matrix(t(df[,1:nrCols]),byrow=TRUE)
-  }, nrCols=nrCols),WellIndex=1:nrWells,Well=wellAN(nrRows,nrCols),check.names=FALSE, stringsAsFactors=FALSE)
-  return(sheetDF)
 }
 
 #' merge the data and metadata on the well index column

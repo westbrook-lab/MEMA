@@ -3,7 +3,7 @@
 
 #'melt raw population dataset to combine wells
 #'
-#'\code{melt8Well}
+#'\code{melt8Well} Converts a Tecan ArrayPro data file to a data.table with properly labeled columns.
 #'
 #'@param DT a data.table with columns of population intensity values in columns named by barcode, well, wavelength and data type(Raw/Net/Background)
 #'@return A data.table in long format with columns of intensity readings for #' each data type and wavelength, barcode and well.
@@ -13,10 +13,12 @@
 #' Datatype is at the beginning of the column name as Raw, Net or
 #' Background. Barcode follows the curly brace symbol. Wavelength follows
 #'  the - symbol after the barcode. Well follows the - symbol after the
-#'  wavelength.
+#'  wavelength. The A and B well labels are swapped to align the Tecan
+#'  labeling to the actual well names.
+#'  @importFrom "data.table" ":="
 
 #' @export
-melt8Well<-function(DT){
+melt8Well<-function(DT,swap = TRUE){
 
   intNames<-grep("Background|Net|Raw",colnames(DT), value = TRUE)
   intNameType<-lapply(intNames,function(intName){
@@ -58,15 +60,13 @@ melt8Well<-function(DT){
 
   #wide format creating columns of data organized by type and wavelength
   DT<-reshape2::dcast(meltDT,...~Type,value.var="Intensity")
-  DT<-data.table::data.table(DT,key=c("Well","Barcode"))
-  return(DT)
-}
+  if (swap){
+    #Swap A and B well names to align Tecan labeling to the actual well names
+    DT$Well <- gsub("A","T",DT$Well)
+    DT$Well <- gsub("B","A",DT$Well)
+    DT$Well <- gsub("T","B",DT$Well)
+  }
 
-#' Rotate the metadata 180 degrees in Array space
-#' @export
-rotateMetadata <- function(DT){
-  DT$ArrayRow <- max(DT$ArrayRow)+1-DT$ArrayRow
-  DT$ArrayColumn <- max(DT$ArrayColumn)+1-DT$ArrayColumn
-  DT$Spot <- as.integer(max(DT$Spot)+1-DT$Spot)
+  DT<-data.table::data.table(DT,key=c("Well","Barcode"))
   return(DT)
 }
