@@ -9,10 +9,9 @@
 #'@param galFile the name of a gal file to be read
 #'@return A dataframe with the contents of each spot in the gal file. The spots
 #'  are converted from print block, row and column space to array row and column
-#'  space. The array space is rotated 180 degrees from the print space. That is,
-#'  the 1,1,1 position in the print space is the last row and last column of the
+#'  space. The array space is aligned with the print space. That is,
+#'  the 1,1,1 position in the print space is the first row and first column of the
 #'  array space.
-#'  @importFrom "data.table" ":="
 #' @export
 readSpotMetadata <- function(galFile) {
   #Read the GAL file
@@ -21,9 +20,10 @@ readSpotMetadata <- function(galFile) {
   layout <- limma::getLayout(df)
   nrCols <- layout$nspot.c*layout$ngrid.c
   nrRows <- layout$nspot.r*layout$ngrid.r
-  colnames(df)[colnames(df) == "Block"] <- "Grid"
+  colnames(df)[colnames(df) == "Grid"] <- "Block"
   df<-addArrayPositionNoRotate(df,gridsPerRow = layout$ngrid.c)
-  return(df)
+  DT<-data.table::data.table(df,key=c("Block","Row","Column"))
+  return(DT)
 }
 
 #'Read the spot metadata from a non-standard MISVIK gal file
@@ -60,12 +60,12 @@ readSpotMetadataMISVIK <- function(galFile){
 #'@param dt a datatable with a Name column to be parsed
 #'@return The input datatable with new columns for the ECM, Ligand and
 #'  Concentration values.
-#'@section Usage: This functions assumes a Name column exists and that its
-#'  format is ECM_Ligand_Concentration. If there are no underscores, then the
-#'  Name is interpreted as an ECM, a NULL string is assigned to the Ligand and a
+#'@section Usage: This function assumes a Name column exists and that its
+#'  format is Concentration_ECM_Ligand or ligand_ECM or Col I_AF 488 or ECM. If Name only
+#'  contains an ECM, a NULL string is assigned to the Ligand and a
 #'  concentration value of 0 is assigned to Concentration. If there are 2 words
-#'  separated by an underscore, the first is the ECM and the second is the
-#'  Ligand. The concentration is assigned a value of 0. If there are 3 words,
+#'  separated by an underscore, the first is the Ligand and the second is the
+#'  ECM. The concentration is assigned a value of 0. If there are 3 words,
 #'  the first is assigned to the concentration.
 #'
 #'  In the special case of the AF 488 fiducial, the Ligand is assigned the value
@@ -107,7 +107,7 @@ parseContents <- function(dt){
 #'
 #'@param dt a datatable with a Name column to be parsed
 #'@return The input datatable with new columns of Condition1, Condition2, Condition3 and Condition4.
-#'@section Usage: This functions assumes a Name column exists uses an underscore as field separators.
+#'@section Usage: This function assumes a Name column exists and uses an underscore as field separators.
 #'@export
 parseBufferWinnerContents <- function(dt) {
   #parse the content names in the gal file for Ligand, ECM and concentrations
@@ -146,19 +146,26 @@ parse4wellvalidationContents <- function(dt){
 #'
 #'@param dt a datatable with a Name column to be parsed
 #'@return The input datatable with new columns of ECM, Ligand and ConcentrationRank.
-#'@section Usage: This functions assumes a Name column exists and uses an
-#'  underscore as field separators. The format is assumed to be
-#'  ECM_Ligand_ConcentrationRank
+#'@section Usage: This function assumes a Name column exists and uses an
+#'  underscore as the field separators. The format must be either
+#'  ECM or ECM_Ligand_ConcentrationRank. ConcentrationRank will be coereced into
+#'  an integer by removing any non-numeric values.
 #'@export
 parseSimulatedContents <- function(dt){
   #parse the content names in the gal file for Ligand, ECM and concentrations
   contentList <- lapply(strsplit(dt$Name,"_"),function(n) {
-    ECM               <- n[[1]]
-    Ligand            <- n[[2]]
-    ConcentrationRank <-as.integer(n[[3]])
+    if (length(n)==2) stop("Invalid format in gal Name field. There should be 1 ECM or 1 ECM with 1 Ligand and a concentration value.")
+    if(length(n)==1){ECM<-n[[1]]
+    Ligand<-""
+    ConcentrationRank<-0
+    } else {
+      ECM               <- n[[1]]
+      Ligand            <- n[[2]]
+      ConcentrationRank <- as.integer(gsub("[^[:digit:]]*","",n[[3]]))
+    }
+
     return(list(Ligand = Ligand, ECM = ECM,ConcentrationRank = ConcentrationRank))
   }
-
   )
   contents <- data.table::rbindlist(contentList)
   dtA <- cbind(dt,contents)
@@ -211,4 +218,3 @@ parseCVContents <- function(dt){
     paste(ECMNames,collapse="_")
   })
 }
-

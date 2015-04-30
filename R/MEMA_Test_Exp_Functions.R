@@ -47,12 +47,13 @@ assignEndPoints<-function(iedt,dt){
   DT<-cbind(dt,ei)
 }
 
+
 #' Merge the Cyto and Main data files
 #' @export
 mergeCytoMain<-function(cydt,mdt){
   #merge the cyto and main data
   #browser()
-  #Check that they have the same unmber of objects
+  #Check that they have the same number of objects
   if(!identical(mdt$Object.ID,cydt$Object.ID)) stop("Main and Cyto files have different Object.ID values and should not be merged.")
   cydt<-data.table::data.table(cydt,key="Parent.Object.ID..MO")
   #Delete unwanted parameters
@@ -176,6 +177,8 @@ readMetadata<-function(xlsFile){
 #' @export
 mergeMetadata<-function(dt, mdf){
   mdt<-data.table::data.table(mdf,key="Well")
+  mdt$PrintOrder[is.na(mdt$PrintOrder)] <- 0
+  mdt$Depositions[is.na(mdt$Depositions)] <- 0
   #Missing values are read as blanks and not NAs so the check below doesn't help
   if(anyNA(mdt))stop("Some of the metadata is missing.")
   data.table::setkey(dt,"Well")
@@ -186,6 +189,7 @@ mergeMetadata<-function(dt, mdf){
 #' @export
 mergeSpotMetadata<-function(dt, mdf){
   mdt<-data.table::data.table(mdf,key="Spot")
+
   #Missing values are read as blanks and not NAs so the check below doesn't help
   if(anyNA(mdt))stop("Some of the metadata is missing.")
   data.table::setkey(dt,"Spot")
@@ -193,31 +197,6 @@ mergeSpotMetadata<-function(dt, mdf){
   merged<-merge(mdt,dt)
 }
 
-#' Read in a Aushon XML log file to get the deposition counts
-#' @export
-readLogData<-function(logFile){
-  #browser()
-  data<-XML::xmlParse(logFile)
-  dataList<-XML::xmlToList(data)
-  #names(dataList)
-  #Only keep the sample attributes
-  dataList<-dataList[names(dataList)=="Sample"]
-  #Bind the XML data into a data table
-  data<-data.table::rbindlist(dataList)
-  #Create Row and Column data by shifting the values by 1
-  data$Row<-as.integer(data$SpotRow)+1
-  data$Column<-as.integer(data$SpotCol)+1
-  #Convert deposition to an integer
-  data$Depositions<-as.integer(data$Depositions)
-  #Remove the 0 deposition entries
-  data<-data[data$Depositions!=0,]
-  #Create a print order column
-  data$PrintOrder<-1:nrow(data)
-  data.table::setkey(data,"PrintOrder")
-  #Remove unneeded columns
-  data <- data[,c("Row","Column","PrintOrder","Depositions"), with=FALSE]
-  return(data)
-}
 
 #' remove any wells (and its replicates) that have fewer than wccThresh cells
 #' @export
@@ -433,9 +412,6 @@ addArrayPositionNoRotate<-function(df,gridsPerRow=4){
   df$ArrayRow<-(df$arrayGridRow-1)*rowsPerGrid+df$Row
   #Assign the ArrayColumn in imaging space (No rotation)
   df$ArrayColumn<-((df$Grid-1)%%(gridsPerRow))*colsPerGrid+df$Column
-  #Rotate the array 180 degrees to match the scan^R
-  df$ArrayRow<-max(df$ArrayRow)-df$ArrayRow+1
-  df$ArrayColumn<-max(df$ArrayColumn)-df$ArrayColumn+1
   #Order the array by ArrayRow then ArrayColumn
   df<-df[order(df$ArrayRow,df$ArrayColumn),]
   #Remove the arrayGridRow column used for calculations
@@ -447,41 +423,6 @@ addArrayPositionNoRotate<-function(df,gridsPerRow=4){
   return(df)
 }
 
-#' Apply NVS names to staining set
-#' @export
-nameEndPoints<-function(ssn, dt){
-  #rename the intensities into EndPoints and melt the datatable
-  if(ssn=="53BP1clPARP"){
-    data.table::setnames(dt,"Mean.Intensity.DAPI","DNA")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.488","clPARP")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.647","p53BP1")
-  }else if(ssn=="H3cyclinE"){
-    data.table::setnames(dt,"Mean.Intensity.DAPI","DNA")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.488","CCNE1")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.647","H3meK9")
-  } else if(ssn=="Ki67actinITGB1"){
-    data.table::setnames(dt,"Mean.Intensity.DAPI","DNA")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.488cyto10","Actin")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.568","Ki67")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.647cyto10","ITGB1")
-    #Remove unneeded columns
-    rcols<-grep(pattern = "(Mean.Intensity.Alexa.488)|(Mean.Intensity.Alexa.568cyto10)|(Mean.Intensity.Alexa.647)",x = names(dt),value = TRUE)
-    dt<-dt[,(rcols):=NULL]
-  }else if(ssn=="KRTVIM"){
-    data.table::setnames(dt,"Mean.Intensity.DAPI","DNA")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.488cyto10","KRT19")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.568cyto10","VIM")
-    data.table::setnames(dt,"Mean.Intensity.Alexa.647cyto10","KRT14")
-    #Remove unneeded columns
-    rcols<-grep(pattern = "(Mean.Intensity.Alexa.488)|(Mean.Intensity.Alexa.568)|(Mean.Intensity.Alexa.647)",x = names(dt),value = TRUE)
-    dt<-dt[,(rcols):=NULL]
-  } else stop("File name has an unknown staining set")
-  #Melt the datatable into long format, keeping the id.var columns and putting the
-  #EndPoint intensity values into a single column and creating an EndPOint column
-  #that contains which Endpoint the intensity is from.
-  cdAm<-reshape2::melt(dt,id.vars=c("PlateIndex","drug","biology","ic50_dose_manu","X.ic_20_man","Well","Compound.concentration","Well00" ,"ConcentrationRank", "WellCellCount","Object.ID" ,"Elongation.Factor","Circularity.Factor","Position","Center.Y" ,"X","Y","Center.X","ic50Concentration","Area","Drugset","t_d" ), variable.name="EndPoint", value.name = "Intensity")
-  return(cdAm)
-}
 
 #' reorganize the population data by well
 #' @export
@@ -558,3 +499,70 @@ kmeansCluster<-function(x, centers=2)
   xkmeans<-kmeans(x, centers = centers)
   return(xkmeans[["cluster"]])
 }
+
+#' Print out correlation plots
+#' @export
+corPlots <- function(DT,valueName,endPoint){
+  browser()
+  nrWells <- length(unique(DT$Well))
+  if(!nrWells == 4) stop("The number of wells must equal 4")
+
+  #Plot well 1 vs 2
+  p <- ggplot(DT, aes_string(x=paste0("DT$",valueName,"[DT$Well== 'A01']"), y=paste0("DT$",valueName,"[DT$Well== 'A02']")))+
+    geom_point(size=1)+
+    ggtitle(paste(endPoint,"Correlation for PBS in ",unique(DT$Barcode)))
+  suppressWarnings(print(p))
+
+  #Plot well 1 vs 3
+  p <- ggplot(DT, aes_string(x=paste0("DT$",valueName,"[DT$Well== 'A01']"), y=paste0("DT$",valueName,"[DT$Well== 'A03']")))+
+    geom_point(size=1)+
+    ggtitle(paste(endPoint,"Correlation for PBS in ",unique(DT$Barcode)))
+  suppressWarnings(print(p))
+
+  #Plot well 1 vs 4
+  p <- ggplot(DT, aes_string(x=paste0("DT$",valueName,"[DT$Well== 'A01']"), y=paste0("DT$",valueName,"[DT$Well== 'A04']")))+
+    geom_point(size=1)+
+    ggtitle(paste(endPoint,"Correlation for PBS in ",unique(DT$Barcode)))
+  suppressWarnings(print(p))
+
+  #Plot well 2 vs 3
+  p <- ggplot(DT, aes_string(x=paste0("DT$",valueName,"[DT$Well== 'A02']"), y=paste0("DT$",valueName,"[DT$Well== 'A03']")))+
+    geom_point(size=1)+
+    ggtitle(paste(endPoint,"Correlation for PBS in ",unique(DT$Barcode)))
+  suppressWarnings(print(p))
+
+  #Plot well 2 vs 4
+  p <- ggplot(DT, aes_string(x=paste0("DT$",valueName,"[DT$Well== 'A02']"), y=paste0("DT$",valueName,"[DT$Well== 'A04']")))+
+    geom_point(size=1)+
+    ggtitle(paste(endPoint,"Correlation for PBS in ",unique(DT$Barcode)))
+  suppressWarnings(print(p))
+
+  #Plot well 3 vs 4
+  p <- ggplot(DT, aes_string(x=paste0("DT$",valueName,"[DT$Well== 'A03']"), y=paste0("DT$",valueName,"[DT$Well== 'A04']")))+
+    geom_point(size=1)+
+    ggtitle(paste(endPoint,"Correlation for PBS in ",unique(DT$Barcode)))
+  suppressWarnings(print(p))
+}
+
+
+#' Deprecated function to support melting population data
+castOnBarcodeWell <- function(DT, barcodes){
+  wideList <-lapply(barcodes, function(barcode){
+    plateList <-lapply(unique(DT$Well[DT$Barcode == barcode]), function(well){
+      #subset to only the current barcode and well
+      sDT <- DT[DT$Barcode == barcode & DT$Well == well,]
+      #Remove the barcode and well
+      barcodeWellDT <- sDT[,setnames(.SD, colnames(.SD), paste(barcode,well,colnames(.SD),sep="_")),by="Barcode,Well"]
+      #Remove the Barcode and Well Columns
+      barcodeWellDT <- barcodeWellDT[,Barcode := NULL]
+      barcodeWellDT <- barcodeWellDT[,Well := NULL]
+      return(barcodeWellDT)
+    })
+    #Cbind the DTs in the returned list
+    plateDT <- do.call("cbind", plateList)
+    return(plateDT)
+  })
+  #Cbind the DTs in the returned list
+  wideDT <- do.call("cbind", wideList)
+}
+
