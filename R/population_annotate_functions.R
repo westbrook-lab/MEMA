@@ -1,11 +1,12 @@
 #Functions to support MEMAs printed in 8 well plates
 
 
-#'melt raw population dataset to combine wells
+#'Melt raw population dataset to combine wells
 #'
 #'\code{melt8Well} Converts a Tecan ArrayPro data file to a data.table with properly labeled columns.
 #'
 #'@param DT a data.table with columns of population intensity values in columns named by barcode, well, wavelength and data type(Raw/Net/Background)
+#'@param swap a logical on whether the data for the A and B rows should be swapped. This must be yes for 8 well data coming from the Array Pro software.
 #'@return A data.table in long format with columns of intensity readings for #' each data type and wavelength, barcode and well.
 #'@section Usage: This function reformats Array Pro results files that
 #' come from analyzing images from multiple channels, wells and plates.

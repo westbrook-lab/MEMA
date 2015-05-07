@@ -9,14 +9,14 @@
 #'Read metadata from a multi-sheet excel file
 #'
 #' \code{readMetadata} reads well level metadata from an excel file. Each sheet in the file represents a different data type. The name of the sheet will become the name of the column. The contents in the sheet will become the data values. Each sheet is foramtted to match a well plate with the A01 well in the upper left corner. First row and column of each sheet are left as labels. The values start in the second row and column.
-#' @param xlsfile The name of the excel file.
+#' @param xlsFile The name of the excel file.
 #' @return a data frame with the data values from each sheet in a column with the name of the sheet.
 #' @export
 readMetadata<-function(xlsFile){
   #browser()
-  sheetList<-sapply(gdata::sheetNames(xlsFile), gdata::read.xls, xls = xlsFile, simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
+  sheetList<-sapply(gdata::sheetNames(path.expand(xlsFile)), gdata::read.xls, xls = path.expand(xlsFile), simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
   nrRows<-dim(sheetList[[1]])[1]
-  nrCols<-dim(sheetList[[1]])[2]
+  nrCols<-as.numeric(max(colnames(sheetList[[1]])))
   nrWells=nrRows*nrCols
   sheetDF<-data.frame(lapply(sheetList,function(df,nrCols){
     #create a dataframe from all rows and columns of each sheet
@@ -26,58 +26,15 @@ readMetadata<-function(xlsFile){
 }
 
 
-#' Calculate Coefficient of Variation (CV)
-#'
-#'Calculates the CV of a numeric vector as the standard deviation over the mean. All NA values are removed from the input vector.
-#'@param x A numeric vector.
-#'@return The CV of the non-na values in the x.
-#'
-#'  @export
-CV <- function(x){
-  sd(x, na.rm=TRUE)/mean(x, na.rm=TRUE)
-}
-
-#' Empty function
-#'
-cleanDT <- function (DT) {
-  return(DT)
-}
-
-#' Extract Intensity Endpoints
-#'  @export
-extractIntsEndpts<-function(DT){
-  #Use the metadata in the columns Endpoint.xxx to extract the columns of
-  #mean intensity data and endpoint name
-  epColNames<-grep("(Endpoint)",colnames(DT),value = TRUE)
-  intColNames<-paste0("Mean.Intensity.Alexa.",sub("Endpoint.","",epColNames))
-  selectColNames<-c(epColNames,intColNames)
-  ieDT<-DT[,selectColNames,with=FALSE]
-  return(ieDT)
-}
-
-#' Assign endpoint names
-#'  @export
-assignEndPoints<-function(iedt,dt){
-  Endpoints<-unique(unlist(iedt[,grep("(Endpoint)",colnames(dt),value = TRUE),with=FALSE]))
-  #TODO Generalize this code to determine how many endpoints are in the staining set
-  #This code now assumes there are 3 stained endpoints and ignores DAPI
-  ei<-do.call("cbind",lapply(Endpoints,function(ep,ieDT){
-    #create a column of intensities for each endpoint based on the Endpoint column
-    endpointIntsPtrs<-which(ieDT[,1:3,with=FALSE]==ep,arr.ind = TRUE)
-    endpointIntsPtrs<-endpointIntsPtrs[order(endpointIntsPtrs[,1]),]
-    iValuesM<-as.matrix(ieDT[,4:6,with=FALSE])
-    epValues<-iValuesM[endpointIntsPtrs]
-  },ieDT=iedt))
-  colnames(ei)<-Endpoints
-  DT<-cbind(dt,ei)
-}
-
-
 #' Merge the Cyto and Main data files
+#'
+#' \code{mergeCytoMain} merges the Olympus scan^R cytoplasmic and main datatables. The Object.ID in the main datatable is merged with Parent.Object.ID..MO in the cyto datatable.
+#' @param cydt The datatable of the cytoplasmic data.
+#' @param mdt The datatable of the main data.
+#' @return A datatable of the merged data.
 #' @export
 mergeCytoMain<-function(cydt,mdt){
   #merge the cyto and main data
-  #browser()
   #Check that they have the same number of objects
   if(!identical(mdt$Object.ID,cydt$Object.ID)) stop("Main and Cyto files have different Object.ID values and should not be merged.")
   cydt<-data.table::data.table(cydt,key="Parent.Object.ID..MO")
@@ -108,6 +65,10 @@ mergeCytoMain<-function(cydt,mdt){
 }#End mergeCytoMain function
 
 #' Summarize cell data to spot level
+#'
+#' \code{summarizeToSpot} summarizes cell level data to the spot level.
+#' @param cd A datatable of cell level data to be summarized.
+#' @return A datatable of the spot level data.
 #' @export
 summarizeToSpot<-function(cd){
   #browser()
@@ -139,31 +100,9 @@ summarizeToSpot<-function(cd){
   return(all)
 }
 
-#' Summarize the cell level data to the well level
-#'
-wellLevelData<-function(cd){
-  #browser()
-  #Create a datatable of the columns to be summariazed
-  intNames<-grep(pattern="(Intensity|Area|Well$|WellCellCount)",x=names(cd),value=TRUE)
-  #Get the metadata column names which are unconstrained
-  if("Spot" %in% names(cd)){
-    mdNames<-grep(pattern="(Intensity|Area|WellCellCount|Object.ID|Parent.Object.ID..MO|Elongation.Factor|Circularity.Factor|Perimeter|Max.Feret.Diameter|Center.X|X|Center.Y|Y|Position|WellIndex|Spot|Grid|Column|Row|ID|Name|ArrayRow|ArrayColumn)",x=names(cd),value=TRUE,invert=TRUE)
-  } else { mdNames<-grep(pattern="(Intensity|Area|WellCellCount|Object.ID|Parent.Object.ID..MO|Elongation.Factor|Circularity.Factor|Perimeter|Max.Feret.Diameter|Center.X|X|Center.Y|Y|Position|WellIndex)",x=names(cd),value=TRUE,invert=TRUE) }
-  keep<-cd[,intNames,with=FALSE]
-  keepMd<-cd[,mdNames,with=FALSE]
-  #Take the mean of each column stratified by well
-  wd<-keep[,lapply(.SD,mean),by=Well]
-  #Get the unique metadata value for each well
-  #The metadata of a spotted well is not unique
-  md<-keepMd[,lapply(.SD,unique),by=Well]
-  data.table::setkey(wd,Well)
-  data.table::setkey(md,Well)
-  all<-wd[md]
-  return(all)
-}
 
-#' Returns a character vector of alphanumeric well names
-#'
+# Returns a character vector of alphanumeric well names
+#
 wellAN<-function(nrRows,nrCols){
   if(nrRows>702)stop("Too many rows to convert. Well alphanumerics are limited to 2 letters")
   Well=unlist(c(lapply(1:nrRows, function(x){
@@ -178,12 +117,22 @@ wellAN<-function(nrRows,nrCols){
 
 #' Change the periods in the column names to spaces
 #'
+#'\code{cleanColumnNames} substitues a space for any single period in the colmun names of a datatable. This is useful at the end of an anlaysis to have human readable display names.
+#' @param dt a datatable
+#' @return the same datable with spaces in place of periods.
+#' @export
 cleanColumnNames<-function(dt){
   data.table::setnames(dt,gsub("[.]"," ",make.names(colnames(dt))))
   return(dt)
 }
 
 #' merge the data and metadata on the well index column
+#'
+#' \code{mergeMetadata} merges the well metadata with data on the well value.
+#' @param dt A datatable of data values
+#' @param mdf A datatable of metadata
+#' @return A datatable of annotated data that is merged on the Well values.
+#'
 #' @export
 mergeMetadata<-function(dt, mdf){
   mdt<-data.table::data.table(mdf,key="Well")
@@ -196,6 +145,11 @@ mergeMetadata<-function(dt, mdf){
 }
 
 #' merge the data and metadata on the well index column
+#' \code{mergeSpotMetadata} merges the well metadata with data on the well value.
+#' @param dt A datatable of data values
+#' @param mdf A datatable of metadata
+#' @return A datatable of annotated data that is merged on the Well values.
+#'
 #' @export
 mergeSpotMetadata<-function(dt, mdf){
   mdt<-data.table::data.table(mdf,key="Spot")
@@ -208,8 +162,8 @@ mergeSpotMetadata<-function(dt, mdf){
 }
 
 
-#' remove any wells (and its replicates) that have fewer than wccThresh cells
-#' @export
+# remove any wells (and its replicates) that have fewer than wccThresh cells
+#
 filterWCC<-function(DT,wccThresh){
   #Identify the low cell count wells
   lowWells<-DT$Well[DT$WellCellCount<wccThresh]
@@ -222,8 +176,8 @@ filterWCC<-function(DT,wccThresh){
   return(DT[DT$WellCellCount>wccThresh,])
 }
 
-#' Normalize on WCC
-#' @export
+# Normalize on WCC
+#
 normWCC<-function(DT){
   inChs<-grep("(Alexa.)[[:digit:]]*$|(Alexa.)[[:digit:]]*(cyto10)$",x=names(DT),value = TRUE)
   span=.55
@@ -245,16 +199,9 @@ normWCC<-function(DT){
   nDT<-cbind(DT,nDT)
 }
 
-#' Rename the Well column to Spot
-#' @export
-renameSpottedWells<-function(DT,well){
-  data.table::setnames(DT,"Well","Spot")
-  DT[,Well:=well]
-  return(DT)
-}
 
-#' Add columns of loess normalized SpotCellCount and intensity data
-#' @export
+# Add columns of loess normalized SpotCellCount and intensity data
+#
 addNormalizedInts<-function(DT,span=0.1,...){
   #Get column names of intensity data
   dataNames<-grep(pattern="(Intensity|SpotCellCount)",x=names(DT),value=TRUE)
@@ -277,8 +224,8 @@ addNormalizedInts<-function(DT,span=0.1,...){
   normedPlate<-do.call(rbind, normedPlateList)
 }
 
-#' Add columns of median normalized intensity data
-#' @export
+# Add columns of median normalized intensity data
+#
 addMedianNormalizedInts<-function(DT,span=0.1,...){
   #Developed for Teacan population data
   #Get column names of intensity data
@@ -302,8 +249,8 @@ addMedianNormalizedInts<-function(DT,span=0.1,...){
   normedPlate<-do.call(rbind, normedPlateList)
 }
 
-#' Extract the named value from a dataset
-#' @export
+# Extract the named value from a dataset
+#
 extractNamedValues<-function(normedPlate,namedValue){
   normNames<-grep(pattern="(norm)",x=names(normedPlate),value=TRUE)
   posWList<-lapply(unique(normedPlate$Well),function(well, normedPlate){
@@ -319,8 +266,8 @@ extractNamedValues<-function(normedPlate,namedValue){
   posW<-do.call(rbind, posWList)
 }#End Function
 
-#' Add columns of loess normalized intensity data
-#' @export
+# Add columns of loess normalized intensity data
+#
 extractNormalizedCntrls<-function(DT,span,...){
   #Get column names of intensity data
   intNames<-grep(pattern="(Intensity)",x=names(DT),value=TRUE)
@@ -348,7 +295,7 @@ extractNormalizedCntrls<-function(DT,span,...){
   cntrls<-rbind(posValues, negValues)
 }
 
-#' Experiment with optimizing on Z prime factor
+# Experiment with optimizing on Z prime factor
 optimizeZPrimeFactor<-function(DT,...){
   #Get column names of intensity data
   intNames<-grep(pattern="(Intensity)",x=names(DT),value=TRUE)
@@ -372,8 +319,8 @@ optimizeZPrimeFactor<-function(DT,...){
   tmp<-calculateZPrimeDT(normedPlate)
 }
 
-#' Calculate the Z prime factor in a datatable
-#' @export
+# Calculate the Z prime factor in a datatable
+#
 calculateZPrimeDT<-function(DT){
   #Given a well of controls values, calculate the ZPrime factors for each channel
   intNames<-grep(pattern="(Intensity)",x=names(DT),value=TRUE)
@@ -386,15 +333,15 @@ calculateZPrimeDT<-function(DT){
   return(ZPrimesDT)
 }
 
-#' Calculate Z prime factor
-#' @export
+# Calculate Z prime factor
+#
 calculateZPrime<-function(pos,neg){
   #Given a vector of negative control values and positive control values, calculate
   #the Z Prime Factor value
   1-3*(sd(pos)+sd(neg))/abs(mean(pos)-mean(neg))
 }
 
-#' Remove unwanted normalized columns
+# Remove unwanted normalized columns
 removeNormedColumns<-function(dt){
   #Remove unwanted normalized columns from the dataframe
   normNames<-grep(pattern="(norm)",x=names(dt),value=TRUE)
@@ -402,40 +349,9 @@ removeNormedColumns<-function(dt){
   return(dt)
 }
 
-#' Add the array row, column and index to a GAL file
-#' @export
-addArrayPositionNoRotate<-function(df,gridsPerRow=4){
-  #Handle dataframes that have the name block instead of grid
-  blockToGrid<-FALSE
-  if("Block" %in% colnames(df))
-  {
-    blockToGrid<-TRUE
-    data.table::setnames(df,"Block","Grid")
-  }
-  #Return the dataframe in the correct space
-  #These values are in the printer space
-  rowsPerGrid<-max(df$Row)
-  colsPerGrid<-max(df$Column)
-  #Assign the grid row. These will run from 1:12 when using a 4x12 print head
-  df$arrayGridRow<-ceiling(df$Grid/gridsPerRow)
-  #Assign the ArrayRow which is in the imaging space
-  df$ArrayRow<-(df$arrayGridRow-1)*rowsPerGrid+df$Row
-  #Assign the ArrayColumn in imaging space (No rotation)
-  df$ArrayColumn<-((df$Grid-1)%%(gridsPerRow))*colsPerGrid+df$Column
-  #Order the array by ArrayRow then ArrayColumn
-  df<-df[order(df$ArrayRow,df$ArrayColumn),]
-  #Remove the arrayGridRow column used for calculations
-  df<-subset(df,select=-c(arrayGridRow))
-  #Assign a spot number in sequential order by row then column
-  df$Spot<-1:(max(df$ArrayColumn)*max(df$ArrayRow))
-  #Handle dataframes that have the name block instead of grid
-  if(blockToGrid) data.table::setnames(df,"Grid","Block")
-  return(df)
-}
 
-
-#' reorganize the population data by well
-#' @export
+# reorganize the population data by well
+#
 meltOnWell<-function(DT){
   #browser()
   #DT is a data.table with columns of intensity values separated by
@@ -489,6 +405,11 @@ meltOnWell<-function(DT){
 }
 
 #' Cluster using a Mixture Model
+#'
+#' \code{autoMMCluster} uses a Mixture Model to assign clusters.
+#' @param x A numeric vector
+#' @param G the number of groups or clusters
+#' @return The cluster assignments of the values in x using Mclust from the mclust package.
 #' @export
 autoMMCluster<-function(x, G=2)
 {# return the cluster assignments for x which is a numeric vector
@@ -500,9 +421,15 @@ autoMMCluster<-function(x, G=2)
 }
 
 #' Cluster using kmeans
+#'
+#' \code{kmeansCluster} is a wrapper function for perfoming kmeans clustering
+#' @param x A numeric vector to be clustered
+#' @param centers The number of centers or clusters to find.
+#' @return The cluster assignments for x using the base kmeans command.
+#'
 #' @export
-kmeansCluster<-function(x, centers=2)
-{# return the cluster assignments for x which is a dataframe
+kmeansCluster<-function(x, centers=2){
+  # return the cluster assignments for x which is a dataframe
   #with the first column as EdU+ clusters and DAPI signal in the 2nd column
   #browser()
   x<-data.frame(x)
@@ -510,8 +437,8 @@ kmeansCluster<-function(x, centers=2)
   return(xkmeans[["cluster"]])
 }
 
-#' Print out correlation plots
-#' @export
+# Print out correlation plots
+#
 corPlots <- function(DT,valueName,endPoint){
   browser()
   nrWells <- length(unique(DT$Well))
@@ -555,7 +482,7 @@ corPlots <- function(DT,valueName,endPoint){
 }
 
 
-#' Deprecated function to support melting population data
+# Deprecated function to support melting population data
 castOnBarcodeWell <- function(DT, barcodes){
   wideList <-lapply(barcodes, function(barcode){
     plateList <-lapply(unique(DT$Well[DT$Barcode == barcode]), function(well){
