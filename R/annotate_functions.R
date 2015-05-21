@@ -57,6 +57,12 @@ readLogData<-function(logFile){
 #'
 #' @export
 makeValidColumnNames <-function(DT){
+  DT <- DT[,unique(colnames(DT)), with=FALSE]
   data.table::setnames(DT,colnames(DT),make.names(colnames(DT)))
   data.table::setnames(DT,colnames(DT),gsub("[.]$","",colnames(DT)))
 }
+
+
+integerMedian <- function(x) as.integer(median(x))
+
+numericMedian <- function(x) as.numeric(median(x))

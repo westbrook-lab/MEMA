@@ -13,9 +13,9 @@ normalized, a \code{ShortName} column that has the printed ECM names and a
 
 \item{value}{The name of the column of values to be normalized}
 
-\item{baseECM}{The name of the printed ECM to be normalized against}
+\item{baseECM}{A regular expressin for the name or names of the printed ECM(s) to be normalized against}
 
-\item{baseGF}{The name of the soluble growth factor to be normalized against}
+\item{baseGF}{A regular expression for the name or names of the soluble growth factors to be normalized against}
 }
 \value{
 A numeric vector of the normalized values
@@ -26,7 +26,7 @@ base MEP.
 }
 \section{Details}{
  \code{normWellsWithinPlate} normalizes the value column of
-  all MEPs by subtracting the median value of the replicates of the MEP that
+  all MEPs by dividing the median value of the replicates of the MEP that
   is the pairing of baseECM  with baseGF.
 }
 

@@ -21,19 +21,20 @@ normProfToCol1 <- function(x){
 #'   normalized, a \code{ShortName} column that has the printed ECM names and a
 #'   \code{Growth.Factors} column that has the growth factor names.
 #' @param value The name of the column of values to be normalized
-#' @param baseECM The name of the printed ECM to be normalized against
-#' @param baseGF The name of the soluble growth factor to be normalized against
+#' @param baseECM A regular expressin for the name or names of the printed ECM(s) to be normalized against
+#' @param baseGF A regular expression for the name or names of the soluble growth factors to be normalized against
 #' @return A numeric vector of the normalized values
 #'
 #' @section Details: \code{normWellsWithinPlate} normalizes the value column of
-#'   all MEPs by subtracting the median value of the replicates of the MEP that
+#'   all MEPs by dividing the median value of the replicates of the MEP that
 #'   is the pairing of baseECM  with baseGF.
+#'   @export
 normWellsWithinPlate <- function(DT, value, baseECM, baseGF) {
   if(!c("ShortName") %in% colnames(DT)) stop(paste("DT must contain a ShortNam column."))
   if(!c("Growth.Factors") %in% colnames(DT)) stop(paste("DT must contain a Growth.Factors column."))
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
-  valueMedian <- median(unlist(DT[(DT$ShortName == baseECM & DT$Growth.Factors == baseGF),value, with=FALSE]), na.rm = TRUE)
-  normedValues <- DT[,value,with=FALSE]-valueMedian
+  valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ShortName)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
+  normedValues <- DT[,value,with=FALSE]/valueMedian
   return(normedValues)
 }
 

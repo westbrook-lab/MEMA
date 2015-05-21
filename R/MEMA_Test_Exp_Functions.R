@@ -13,7 +13,7 @@
 #' @return a data frame with the data values from each sheet in a column with the name of the sheet.
 #' @export
 readMetadata<-function(xlsFile){
-  #browser()
+  browser()
   sheetList<-sapply(gdata::sheetNames(path.expand(xlsFile)), gdata::read.xls, xls = path.expand(xlsFile), simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
   nrRows<-dim(sheetList[[1]])[1]
   nrCols<-as.numeric(max(colnames(sheetList[[1]])))
@@ -21,7 +21,7 @@ readMetadata<-function(xlsFile){
   sheetDF<-data.frame(lapply(sheetList,function(df,nrCols){
     #create a dataframe from all rows and columns of each sheet
     dfM<-matrix(t(df[,1:nrCols]),byrow=TRUE)
-  }, nrCols=nrCols),WellIndex=1:nrWells,Well=wellAN(nrRows,nrCols),check.names=TRUE, stringsAsFactors=FALSE)
+  }, nrCols=nrCols),WellIndex=1:nrWells,Well=MEMA:::wellAN(nrRows,nrCols),check.names=TRUE, stringsAsFactors=FALSE)
   return(sheetDF)
 }
 
@@ -123,6 +123,17 @@ wellAN<-function(nrRows,nrCols){
 #' @export
 cleanColumnNames<-function(dt){
   data.table::setnames(dt,gsub("[.]"," ",make.names(colnames(dt))))
+  return(dt)
+}
+
+#' Remove spaces in the column names
+#'
+#'\code{removeColumnNameSpaces} remove spaces in the colmun names of a datatable. This is useful to compare plates with slight differences in the metadata naming.
+#' @param dt a datatable
+#' @return the same datable with spaces in the column names removed.
+#' @export
+removeColumnNameSpaces<-function(dt){
+  data.table::setnames(dt,gsub(" ","",make.names(colnames(dt))))
   return(dt)
 }
 
