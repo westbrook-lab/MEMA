@@ -13,7 +13,7 @@
 #' @return a data frame with the data values from each sheet in a column with the name of the sheet.
 #' @export
 readMetadata<-function(xlsFile){
-  browser()
+  #browser()
   sheetList<-sapply(gdata::sheetNames(path.expand(xlsFile)), gdata::read.xls, xls = path.expand(xlsFile), simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
   nrRows<-dim(sheetList[[1]])[1]
   nrCols<-as.numeric(max(colnames(sheetList[[1]])))
@@ -21,7 +21,7 @@ readMetadata<-function(xlsFile){
   sheetDF<-data.frame(lapply(sheetList,function(df,nrCols){
     #create a dataframe from all rows and columns of each sheet
     dfM<-matrix(t(df[,1:nrCols]),byrow=TRUE)
-  }, nrCols=nrCols),WellIndex=1:nrWells,Well=MEMA:::wellAN(nrRows,nrCols),check.names=TRUE, stringsAsFactors=FALSE)
+  }, nrCols=nrCols),WellIndex=1:nrWells,Well=wellAN(nrRows,nrCols),check.names=TRUE, stringsAsFactors=FALSE)
   return(sheetDF)
 }
 
@@ -101,8 +101,14 @@ summarizeToSpot<-function(cd){
 }
 
 
-# Returns a character vector of alphanumeric well names
-#
+#' Returns a character vector of alphanumeric well names
+#'
+#' \code{wellAN} is a convenience function that provides alphanumeric names
+#' for well plates or arrays.
+#' @param nrRows The number of rows in the plate or array.
+#' @param nrCols The number of columns in the plate or array.
+#' @return A character vector of the well names
+#' @export
 wellAN<-function(nrRows,nrCols){
   if(nrRows>702)stop("Too many rows to convert. Well alphanumerics are limited to 2 letters")
   Well=unlist(c(lapply(1:nrRows, function(x){

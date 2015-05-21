@@ -1,0 +1,5 @@
+library(MEMA)
+browseVignettes()
+browseVignettes("MEMA")
+?coerce
+?coerceAllECM
