@@ -11,12 +11,15 @@
 #'  are converted from print block, row and column space to array row and column
 #'  space. The array space is aligned with the print space. That is,
 #'  the 1,1,1 position in the print space is the first row and first column of the
-#'  array space.
+#'  array space. The Name and ID fields of spots that were not printed have their
+#'  dashes replaced with the word blank.
 #' @export
 readSpotMetadata <- function(galFile) {
   #Read the GAL file
   #browser()
   df <- limma::readGAL(galFile)
+  df$Name <- gsub("^-$","blank",df$Name)
+  df$ID <- gsub("^-$","blank",df$ID)
   layout <- limma::getLayout(df)
   nrCols <- layout$nspot.c*layout$ngrid.c
   nrRows <- layout$nspot.r*layout$ngrid.r
