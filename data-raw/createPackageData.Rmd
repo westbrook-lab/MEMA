@@ -96,7 +96,7 @@ annDTList <- lapply(barcodes, function(barcode){
   #Merge the data with spot metadata that is well row specific
   DT <- merge(popData,rbind(ARowMetadata,BRowMetadata), by = c("Well","Block","Row","Column"), all=TRUE)
 
-  write.table(DT, paste0(barcode,"PopAnn.txt"), sep = "\t",row.names = FALSE, quote=FALSE)
+  #write.table(DT, paste0(barcode,"PopAnn.txt"), sep = "\t",row.names = FALSE, quote=FALSE)
   return(DT)
 })
 annDT <- rbindlist((annDTList))
@@ -107,6 +107,12 @@ sDT <- merge(annDT,rbind(ARowMetadata,BRowMetadata), by = c("Well","Block","Row"
 set.seed(1234)
 sDT <- sDT[,Net.488Random := randomizePositions(Net.488),by="Barcode,Well"]
 
-write.table(sDT, paste0("LI8V00205_06PopAnn.txt"), sep = "\t",row.names = FALSE, quote=FALSE)
+#write.table(sDT, paste0("LI8V00205_06PopAnn.txt"), sep = "\t",row.names = FALSE, quote=FALSE)
+
+```
+```{r LINCs PC3 Data, echo=FALSE, message=FALSE, warnings=FALSE}
+#Read in the entire staining set of annotated data and store it as package data
+popDT <- fread("~/Documents/LINCs Pilot/PC3/Annotated Data/LI8X00101_08PopAnn.txt")
+use_data(popDT)
 
 ```

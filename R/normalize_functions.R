@@ -31,10 +31,27 @@ normProfToCol1 <- function(x){
 #'   @export
 normWellsWithinPlate <- function(DT, value, baseECM, baseGF) {
   if(!c("ShortName") %in% colnames(DT)) stop(paste("DT must contain a ShortNam column."))
-  if(!c("Growth.Factors") %in% colnames(DT)) stop(paste("DT must contain a Growth.Factors column."))
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
-  valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ShortName)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
+  if("Ligand" %in% colnames(DT)){
+    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ShortName)  & grepl(baseGF,DT$Ligand)),value, with=FALSE]), na.rm = TRUE)
+  } else if (c("Growth.Factors") %in% colnames(DT)) {
+    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ShortName)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
+  } else stop (paste("DT must contain a Growth.Factors or Ligand column."))
   normedValues <- DT[,value,with=FALSE]/valueMedian
   return(normedValues)
 }
 
+#' loessModel Create a median normalized loess model of an array
+#'
+#'@param data A dataframe with ArrayRow, ArrayColumn and signal intensity columns
+#'@param value The column name of the signal intensity column
+#'@param span The span value passed to loess. Values between 0 and 1 determine the
+#'proportion of the population to be included in the loess neighborhood.
+#'@return a vector of median normalized loess values of the signal
+#'@export
+loessModel <- function(data, value, span){
+  dataModel <- loess(as.formula(paste0(value," ~ ArrayRow+ArrayColumn")), data,span=span)
+  dataPredicted <- predict(dataModel)
+  predictedMedian <- median(dataPredicted, na.rm = TRUE)
+  dataNormed <- dataPredicted/predictedMedian
+}
