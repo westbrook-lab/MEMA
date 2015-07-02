@@ -20,3 +20,10 @@
 #' }
 #' @source {Aushon printer}
 "spotMetadata"
+
+#' Annotated data from a 4 plate experiment
+#'
+#' Three channels of annotated population level data from 32 MEMAs.
+#' @format A data table with 39 columns and 22,272 rows of data and metadata.
+#' @source Tecan LS Reloaded
+"popDT"

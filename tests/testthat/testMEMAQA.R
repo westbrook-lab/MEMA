@@ -19,9 +19,9 @@ test_that("rotateMetadata works correctly",{
   expect_equal(rotateMetadata(MEMA::spotMetadata),MEMA::spotMetadata180)
 })
 
-test_that("readSpotMetadata works correctly",{
-  expect_equal(smd, MEMA::readSpotMetadata(system.file("extdata", "20150403_LI8V002_16ECM_28pin.gal", package = "MEMA")))
-})
+# test_that("readSpotMetadata works correctly",{
+#   expect_equal(smd, MEMA::readSpotMetadata(system.file("extdata", "20150403_LI8V002_16ECM_28pin.gal", package = "MEMA")))
+# })
 
 # test_that("melt8Well works correctly",{
 #   expect_equal(melt8Well(MEMA::popDataRaw),MEMA::popData)
