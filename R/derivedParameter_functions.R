@@ -11,69 +11,77 @@ spotCellDensities <- function(spot,radius=(max(spot$X)-min(spot$X))/5) {
   return(cellDensity)
 }
 
-
-#' Calculate positional derived parameters for cell-level data
-#'@param DT A cell level datatable with plate-level x,y coordinates
-#'@param outerThresh A numeric value to threshold the distance from the local origin to the cell to classify cells as Outer cells.
-#'@param wedges A numeric value for the number of wedge-shpaed bins for grouping the theta values.
-#'@return A cell level datatable with new columns of XLocal, YLocal, RadialPostion, Theta, Outer, Density, Sparse and Perimeter values.
+#'Deriving Position-based Parameters
+#'
+#' Calculate the position-based derived parameters for cell-level data to aid population heterogenaity studies.
+#'@param DT A cell level data.table with plate-level x,y coordinates
+#'@param densityRadius The radius of the circle around each nuclei defining its neighborhood.
+#'@param outerThresh A quantile value between 0 and 1 used to threshold RadialPosition. The returned logical in the Outer column will be TRUE for cells with RadialPosition values in quantiles greater than outerThresh.
+#'@param wedges A numeric value for the number of wedge-shaped bins for grouping the theta values.
+#'@param sparseThresh A numeric value used to threshold the Density values. The returned logical in the Sparse column will be TRUE for cells with Density values greater than sparseThresh.
+#'@return A cell level data.table of length nrow(DT) with columns of XLocal (numeric), YLocal (numeric), RadialPostion (numeric), Theta (numeric), Outer (logical), Density (numeric), Sparse (logical) and Perimeter (logical) values. XLocal and YLocal are cartesian coordinates of each nuclei with the origin at the median X and median Y of each spot. RadialPosition and Theta are polar coordinates for XLocal and YLocal. Outer is a logical for cells in quantiles greater that outerThresh. Density is a scaled value that represents the number of nuclei centers within a densityRadius of each cell. Sparse is a logical for whether each cell is in a neighborhood with a Density value less than sparseThresh. Perimeter is a logical for the cell meeting the following criteria: Outer, furthest from the origin in their wedge and not Sparse.
+#'
+#' Theta values function is from Roland on Stack Overflow
+#'http://stackoverflow.com/questions/23018056/convert-cartesian-angles-to-polar-compass-cardinal-angles-in-r
 #'
 #'@export
-positionParms <- function(DT,outerThresh=.2, wedges=18, sparseThresh=.8){
+positionParms <- function(DT,densityRadius = 160, outerThresh=.2, wedges=18, sparseThresh=.8){
   # count the number of cells within a euclidean distance from each cell
 
+  lDT <- copy(DT)
   #Add local cartesian and polar coordinates to each cell
-  DT <- DT[,XLocal := X-median(X), by="Barcode,Well,Spot"]
-  DT <- DT[,YLocal := Y-median(Y), by="Barcode,Well,Spot"]
-  DT <- DT[,RadialPosition := sqrt(XLocal^2+YLocal^2)]
-  DT <- DT[,Theta := calcTheta(XLocal,YLocal)]
+  lDT <- lDT[,XLocal := X-median(X), by="Barcode,Well,Spot"]
+  lDT <- lDT[,YLocal := Y-median(Y), by="Barcode,Well,Spot"]
+  lDT <- lDT[,RadialPosition := sqrt(XLocal^2+YLocal^2)]
+  lDT <- lDT[,Theta := calcTheta(XLocal,YLocal)]
 
   #Add the cell density
   #Average nuclear radius is 40 so touching nuclei are 80 apart
   #Set neighborhood as 4 nuclei radii
-  DT <- DT[,Density:=spotCellDensities(.SD, radius=160)*10000,by="Barcode,Well,Spot"]
-  DT <- DT[,Sparse := Density < sparseThresh]
+  lDT <- lDT[,Density:=spotCellDensities(.SD, radius=densityRadius)*10000,by="Barcode,Well,Spot"]
+  lDT <- lDT[,Sparse := Density < sparseThresh]
 
   #Add a local wedge ID to each cell based on conversations with Michel Nederlof
   wedgeAngs <- 360/wedges
-  DT <- DT[,Wedge:=ceiling(Theta/wedgeAngs)]
+  lDT <- lDT[,Wedge:=ceiling(Theta/wedgeAngs)]
 
   #Define the perimeter cell if it exists in each wedge
   #Classify cells as outer if they have a radial position greater than a thresh
-  DT <- DT[,OuterCell := labelOuterCells(RadialPosition, thresh=outerThresh),by="Barcode,Well,Spot"]
+  lDT <- lDT[,OuterCell := labelOuterCells(RadialPosition, thresh=outerThresh),by="Barcode,Well,Spot"]
 
   #Require the cell not be in a sparse region
-  denseOuterDT <- DT[!DT$Sparse  & DT$OuterCell]
+  denseOuterDT <- lDT[!lDT$Sparse  & lDT$OuterCell]
   denseOuterDT <- denseOuterDT[,Perimeter := findPerimeterCell(.SD) ,by="Barcode,Well,Spot,Wedge"]
-  setkey(DT,Barcode,Well,Object.ID)
-  setkey(denseOuterDT,Barcode,Well,Object.ID)
-  DT <- denseOuterDT[,list(Barcode,Well,Object.ID,Perimeter)][DT]
-  DT$Perimeter[is.na(DT$Perimeter)] <- FALSE
-  return(DT[,list(Barcode,Well,Spot,Object.ID,XLocal,YLocal,RadialPosition,Theta,Wedge,Density,Sparse,OuterCell,Perimeter)])
+  setkey(lDT,Barcode,Well,Spot,Object.ID)
+  setkey(denseOuterDT,Barcode,Well,Spot,Object.ID)
+  lDT <- denseOuterDT[,list(Barcode,Well,Spot,Object.ID,Perimeter)][lDT]
+  lDT$Perimeter[is.na(lDT$Perimeter)] <- FALSE
+  return(lDT[,list(Barcode,Well,Spot,Object.ID,XLocal,YLocal,RadialPosition,Theta,Wedge,Density,Sparse,OuterCell,Perimeter)])
 }
 
-
-#'\code{calcTheta} Return the polar coordinate theta value
-#'
-#'@param x The x numeric value in cartesian coordinates.
-#'@param y The y numeric value in cartesian coordinates.
-#'@return The theta value of the X and y converted to polar coordinates.
-#'
-#'
-#' Function from Roland on Stack Overflow
-#'http://stackoverflow.com/questions/23018056/convert-cartesian-angles-to-polar-compass-cardinal-angles-in-r
+#Calculate the polar coordinate theta value
+#
+#Return the polar coordinate theta value that starts at 0 along the positive Y axis and increases to 360 in a clockwise direction.
+#
+#@param x The x numeric value in cartesian coordinates.
+#@param y The y numeric value in cartesian coordinates.
+#@return The theta value of the X and y converted to polar coordinates.
+#
+#
+# Function from Roland on Stack Overflow
+#http://stackoverflow.com/questions/23018056/convert-cartesian-angles-to-polar-compass-cardinal-angles-in-r
 calcTheta <- function(x,y) {
   z <- x + 1i * y
   res <- 90 - Arg(z) / pi * 180
   res %% 360
 }
 
-#'\code{findPerimeterCell} Determine the perimeter cell in wedge
-#'
-#' @param x A datatable or dataframe with a RadialPosition column
-#' @return A logical vector the length of x with a TRUE value for the Perimeter cell
-#'
-#'
+#\code{findPerimeterCell} Determine the perimeter cell in wedge
+#
+# @param x A datatable or dataframe with a RadialPosition column
+# @return A logical vector the length of x with a TRUE value for the Perimeter cell
+#
+#
 findPerimeterCell <- function(x){
   if(!nrow(x)==0){
     perimeterLogicals <- vector(length=nrow(x))
@@ -82,18 +90,62 @@ findPerimeterCell <- function(x){
   return(perimeterLogicals)
 }
 
-#'\code{labelOuterCells} Determine if a cell is in Outer cell in the spot
-#'
-#' @param x A numeric vector of RadialPositions
-#' @param thresh A numeric value to threshold x. The returned logical will be TRUE for cells with x values greater than thresh.
-#' @return A logical vector the length of x with a TRUE value for the Outer cells
-#'
-#'
+#Classify Outer cells
+#
+#\code{labelOuterCells} Determine if a cell is an Outer cell in the spot
+#
+# @param x A numeric vector of RadialPositions
+# @param thresh A quantile value between 0 and 1 used to threshold x. The returned logical will be TRUE for cells with x values in quantiles greater than thresh.
+# @return A logical vector the length of x with a TRUE value for the Outer cells
+#
+#
 labelOuterCells <- function(x, thresh=.75){
   outerLogicals <- NULL
   if(!length(x)==0){
     outerLogicals <- x>quantile(x,probs = thresh, na.rm=TRUE)
   }
   return(outerLogicals)
+}
+
+# Cluster using kmeans
+#
+# \code{kmeansClusterValue} is a wrapper function for perfoming kmeans clustering
+# @param x A numeric vector to be clustered
+# @param centers The number of centers or clusters to find.
+# @return The cluster assignments for x using the base kmeans command.
+#
+#
+kmeansClusterValue <- function (x, centers = 2)
+{
+  #browser()
+  x <- data.frame(x)
+  xkmeans <- kmeans(x, centers = centers)
+  if(centers==2){
+    if(xkmeans$centers[1] > xkmeans$centers[2]){
+      tmp <- xkmeans$cluster == 1
+      xkmeans$cluster[xkmeans$cluster == 2] <- 1L
+      xkmeans$cluster[tmp] <- 2L
+    }
+  }
+  return(xkmeans[["cluster"]])
+}
+
+
+#'kmeans cluster an intensity value
+#'
+#'Returns cluster assignments for intensity values based on a control ligand
+#'@param x A dataframe or data.table
+#'@param value A character vector of one column name in x that conatins non-negative intensity values
+#'@param ctrlLigand A character vector of one Ligand name in x
+#'
+#'@return Cluster assignments of length nrow(x)for the value column based on a kmeans threshold calculated from the ligand values. The values are 1 for intensities above the threshold and 0 for values equal to or less than the trheshold.
+#'
+#'@export
+kmeansCluster <- function(x,value,ctrlLigand="HighSerum"){
+  ctrlClusters <- kmeansClusterValue(log2(x[[value]][x$Ligand==ctrlLigand]))
+  ctrlPositiveThresh <- min(x[[value]][x$Ligand==ctrlLigand][ctrlClusters==2])
+  clusters <- rep.int(0,nrow(x))
+  clusters[x[[value]]>ctrlPositiveThresh] <- 1
+  return(clusters)
 }
 

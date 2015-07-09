@@ -437,22 +437,7 @@ autoMMCluster<-function(x, G=2)
   return(cl)
 }
 
-#' Cluster using kmeans
-#'
-#' \code{kmeansCluster} is a wrapper function for perfoming kmeans clustering
-#' @param x A numeric vector to be clustered
-#' @param centers The number of centers or clusters to find.
-#' @return The cluster assignments for x using the base kmeans command.
-#'
-#' @export
-kmeansCluster<-function(x, centers=2){
-  # return the cluster assignments for x which is a dataframe
-  #with the first column as EdU+ clusters and DAPI signal in the 2nd column
-  #browser()
-  x<-data.frame(x)
-  xkmeans<-kmeans(x, centers = centers)
-  return(xkmeans[["cluster"]])
-}
+
 
 # Print out correlation plots
 #

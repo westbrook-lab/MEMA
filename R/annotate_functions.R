@@ -63,6 +63,12 @@ makeValidColumnNames <-function(DT){
 }
 
 
-integerMedian <- function(x) as.integer(median(x))
-
+#' Return the median of a vector as a numeric value
+#'
+#'\code{numericMedian} is a helper function for use within data.table that ensure the all medians are returned as numeric instead of numeric or integer values.
+#' @param x integer or double vector
+#'
+#' @return The median of x as a numeric value
+#'
+#'@export
 numericMedian <- function(x) as.numeric(median(x))

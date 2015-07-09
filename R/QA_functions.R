@@ -26,3 +26,18 @@ CV <- function(x){
 cleanDT <- function (DT) {
   return(DT)
 }
+
+#' Calculate a QA score for MEMAs
+#'
+#' Return a QA score based on the number of spots missing or below a threshold
+#' @param DT A datatable with MEMA data
+#' @param threshold A numeric vector of length 1
+#' @param maxNRSpot A numeric vector of length 1 that is the maximum number of spots printed on the MEMA
+#' @param value A character vector of length 1 that is the column name of the values that determine the QA score
+#' @return A single numeric value that is the proportion of spots below the threshold
+#'
+#'  @export
+calcQAScore <- function(DT, threshold, maxNrSpot=700, value){
+  QAScore <- (nrow(DT)-sum(DT[,value,with=FALSE] < threshold))/maxNrSpot
+  return (QAScore)
+}
