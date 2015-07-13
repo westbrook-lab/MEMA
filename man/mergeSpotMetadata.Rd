@@ -2,8 +2,7 @@
 % Please edit documentation in R/MEMA_Test_Exp_Functions.R
 \name{mergeSpotMetadata}
 \alias{mergeSpotMetadata}
-\title{merge the data and metadata on the well index column
-\code{mergeSpotMetadata} merges the well metadata with data on the well value.}
+\title{Merge the data and metadata on the well index column}
 \usage{
 mergeSpotMetadata(dt, mdf)
 }
@@ -16,7 +15,6 @@ mergeSpotMetadata(dt, mdf)
 A datatable of annotated data that is merged on the Well values.
 }
 \description{
-merge the data and metadata on the well index column
 \code{mergeSpotMetadata} merges the well metadata with data on the well value.
 }
 

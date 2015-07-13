@@ -2,7 +2,7 @@
 % Please edit documentation in R/normalize_functions.R
 \name{loessModel}
 \alias{loessModel}
-\title{loessModel Create a median normalized loess model of an array}
+\title{Create a median normalized loess model of an array}
 \usage{
 loessModel(data, value, span)
 }
@@ -18,6 +18,6 @@ proportion of the population to be included in the loess neighborhood.}
 a vector of median normalized loess values of the signal
 }
 \description{
-loessModel Create a median normalized loess model of an array
+Create a median normalized loess model of an array
 }
 

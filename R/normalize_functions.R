@@ -18,10 +18,10 @@ normProfToCol1 <- function(x){
 #' base MEP.
 #'
 #' @param DT A \code{data.table} that includes a numeric value column to be
-#'   normalized, a \code{ShortName} column that has the printed ECM names and a
-#'   \code{Growth.Factors} column that has the growth factor names.
+#'   normalized, a \code{ECMpAnnotID} column that has the printed ECM names and a
+#'   \code{Growth.Factors} or \code{LigandAnnotID}column that has the growth factor names.
 #' @param value The name of the column of values to be normalized
-#' @param baseECM A regular expressin for the name or names of the printed ECM(s) to be normalized against
+#' @param baseECM A regular expression for the name or names of the printed ECM(s) to be normalized against
 #' @param baseGF A regular expression for the name or names of the soluble growth factors to be normalized against
 #' @return A numeric vector of the normalized values
 #'
@@ -30,18 +30,18 @@ normProfToCol1 <- function(x){
 #'   is the pairing of baseECM  with baseGF.
 #'   @export
 normWellsWithinPlate <- function(DT, value, baseECM, baseGF) {
-  if(!c("ShortName") %in% colnames(DT)) stop(paste("DT must contain a ShortNam column."))
+  if(!c("ECMpAnnotID") %in% colnames(DT)) stop(paste("DT must contain a ECMpAnnotID column."))
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
-  if("Ligand" %in% colnames(DT)){
-    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ShortName)  & grepl(baseGF,DT$Ligand)),value, with=FALSE]), na.rm = TRUE)
+  if("LigandAnnotID" %in% colnames(DT)){
+    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseGF,DT$LigandAnnotID)),value, with=FALSE]), na.rm = TRUE)
   } else if (c("Growth.Factors") %in% colnames(DT)) {
-    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ShortName)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
-  } else stop (paste("DT must contain a Growth.Factors or Ligand column."))
+    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
+  } else stop (paste("DT must contain a Growth.Factors or LigandAnnotID column."))
   normedValues <- DT[,value,with=FALSE]/valueMedian
   return(normedValues)
 }
 
-#' loessModel Create a median normalized loess model of an array
+#' Create a median normalized loess model of an array
 #'
 #'@param data A dataframe with ArrayRow, ArrayColumn and signal intensity columns
 #'@param value The column name of the signal intensity column

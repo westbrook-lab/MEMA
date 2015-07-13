@@ -1,9 +1,11 @@
 #Functions to support MEMAs printed in 8 well plates
 
-#'\code{spotCellDensities} Calculate the neghborhood density around each cell
+#' Calculate the neghborhood density around each cell
 #'@param spot A datatable with X and Y columns
 #'@param radius The radial distance that defines the neighborhood around the cell
 #'@return A numeric vector of length nrow(spot) with the cell density values
+#'
+#'@export
 spotCellDensities <- function(spot,radius=(max(spot$X)-min(spot$X))/5) {
   distMatrix <- as.matrix(dist(spot[,list(X,Y)]))
   count <- apply(distMatrix, 2, function(x){sum(x <= radius) - 1})
@@ -131,7 +133,7 @@ kmeansClusterValue <- function (x, centers = 2)
 }
 
 
-#'kmeans cluster an intensity value
+#'kMeans cluster an intensity value
 #'
 #'Returns cluster assignments for intensity values based on a control ligand
 #'@param x A dataframe or data.table

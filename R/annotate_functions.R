@@ -1,7 +1,7 @@
 #Functions to support MEMAs printed in 8 well plates
 
 
-#'\code{rotateMetadata} Rotate the metadata 180 degrees in Array space
+#' Rotate the metadata 180 degrees in Array space
 #'
 #'@param DT A data.table of metadata with Spot, ArrayRow and ArrayColumn columns.
 #'@return The same data.table rotated 180 degrees in array space. The ArrayRow, Arraycolumn and Spot values are updated.

@@ -161,7 +161,8 @@ mergeMetadata<-function(dt, mdf){
   merged<-merge(mdt,dt)
 }
 
-#' merge the data and metadata on the well index column
+#' Merge the data and metadata on the well index column
+#'
 #' \code{mergeSpotMetadata} merges the well metadata with data on the well value.
 #' @param dt A datatable of data values
 #' @param mdf A datatable of metadata

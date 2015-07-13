@@ -2,7 +2,7 @@
 % Please edit documentation in R/derivedParameter_functions.R
 \name{kmeansCluster}
 \alias{kmeansCluster}
-\title{kmeans cluster an intensity value}
+\title{kMeans cluster an intensity value}
 \usage{
 kmeansCluster(x, value, ctrlLigand = "HighSerum")
 }

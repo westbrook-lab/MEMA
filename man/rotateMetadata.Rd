@@ -2,7 +2,7 @@
 % Please edit documentation in R/annotate_functions.R
 \name{rotateMetadata}
 \alias{rotateMetadata}
-\title{\code{rotateMetadata} Rotate the metadata 180 degrees in Array space}
+\title{Rotate the metadata 180 degrees in Array space}
 \usage{
 rotateMetadata(DT)
 }
@@ -13,6 +13,6 @@ rotateMetadata(DT)
 The same data.table rotated 180 degrees in array space. The ArrayRow, Arraycolumn and Spot values are updated.
 }
 \description{
-\code{rotateMetadata} Rotate the metadata 180 degrees in Array space
+Rotate the metadata 180 degrees in Array space
 }
 
