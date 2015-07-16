@@ -54,11 +54,11 @@ positionParms <- function(DT,densityRadius = 160, outerThresh=.2, wedges=18, spa
   #Require the cell not be in a sparse region
   denseOuterDT <- lDT[!lDT$Sparse  & lDT$OuterCell]
   denseOuterDT <- denseOuterDT[,Perimeter := findPerimeterCell(.SD) ,by="Barcode,Well,Spot,Wedge"]
-  setkey(lDT,Barcode,Well,Spot,Object.ID)
-  setkey(denseOuterDT,Barcode,Well,Spot,Object.ID)
-  lDT <- denseOuterDT[,list(Barcode,Well,Spot,Object.ID,Perimeter)][lDT]
+  setkey(lDT,Barcode,Well,Spot,ObjectID)
+  setkey(denseOuterDT,Barcode,Well,Spot,ObjectID)
+  lDT <- denseOuterDT[,list(Barcode,Well,Spot,ObjectID,Perimeter)][lDT]
   lDT$Perimeter[is.na(lDT$Perimeter)] <- FALSE
-  return(lDT[,list(Barcode,Well,Spot,Object.ID,XLocal,YLocal,RadialPosition,Theta,Wedge,Density,Sparse,OuterCell,Perimeter)])
+  return(lDT[,list(Barcode,Well,Spot,ObjectID,XLocal,YLocal,RadialPosition,Theta,Wedge,Density,Sparse,OuterCell,Perimeter)])
 }
 
 #Calculate the polar coordinate theta value

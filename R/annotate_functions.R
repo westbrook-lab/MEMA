@@ -49,19 +49,21 @@ readLogData<-function(logFile){
   return(DT)
 }
 
-#' Make valid column names in a data.table
+#' Convert column names in a data.table
 #'
 #' @param DT A data.table
 #'
-#' @return DT The same data.table with intenal paces in the column names converted to . Any  trailing spaces are deleted.
+#' @return DT The same data.table with duplicated columns, invalid column name characters and trailing spaces removed.
 #'
 #' @export
-makeValidColumnNames <-function(DT){
-  DT <- DT[,unique(colnames(DT)), with=FALSE]
-  data.table::setnames(DT,colnames(DT),make.names(colnames(DT)))
-  data.table::setnames(DT,colnames(DT),gsub("[.]$","",colnames(DT)))
+convertColumnNames <- function (DT) {
+  #Delete any duplicate names keeping the first instance
+  DT <- DT[, unique(colnames(DT)), with = FALSE]
+  #Replace invalid characters with a '.'
+  data.table::setnames(DT, colnames(DT), make.names(colnames(DT)))
+  #Remove all '.'s
+  data.table::setnames(DT, colnames(DT), gsub("[.]", "", colnames(DT)))
 }
-
 
 #' Return the median of a vector as a numeric value
 #'
