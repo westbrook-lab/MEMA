@@ -41,7 +41,7 @@ positionParms <- function(DT,densityRadius = 160, outerThresh=.2, wedges=18, spa
   #Average nuclear radius is 40 so touching nuclei are 80 apart
   #Set neighborhood as 4 nuclei radii
   lDT <- lDT[,Density:=spotCellDensities(.SD, radius=densityRadius)*10000,by="Barcode,Well,Spot"]
-  lDT <- lDT[,Sparse := Density < sparseThresh]
+  lDT <- lDT[,Sparse := as.logical(Density < sparseThresh)]
 
   #Add a local wedge ID to each cell based on conversations with Michel Nederlof
   wedgeAngs <- 360/wedges

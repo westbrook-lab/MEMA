@@ -1,11 +1,11 @@
 Package: MEMA
 Type: Package
 Title: Functions to preprocess and normalize MEMA data
-Version: 0.0.0.9000
-Date: 2015-04-29
+Version: 0.1.0.9000
+Date: 2015-07-29
 Authors@R: person("Mark", "Dane", ,"dane@ohsu.edu", role = c("aut", "cre"))
 Description: The functions in this package merge imaging data with the metadata, normalize the data, summarize to the well and spot level and provide some quality measures.
-License: MIT + file LICENSE
+License: MIT
 LazyData: TRUE
 Imports: data.table,
     gdata(>= 2.13.3),

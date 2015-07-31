@@ -11,9 +11,9 @@ calcQAScore(DT, threshold, maxNrSpot = 700, value)
 
 \item{threshold}{A numeric vector of length 1}
 
-\item{value}{A character vector of length 1 that is the column name of the values that determine the QA score}
+\item{maxNrSpot}{A numeric vector of length 1 that is the maximum number of spots printed on the MEMA}
 
-\item{maxNRSpot}{A numeric vector of length 1 that is the maximum number of spots printed on the MEMA}
+\item{value}{A character vector of length 1 that is the column name of the values that determine the QA score}
 }
 \value{
 A single numeric value that is the proportion of spots below the threshold
