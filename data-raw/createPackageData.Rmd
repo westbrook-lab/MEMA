@@ -39,7 +39,6 @@ devtools::use_data(smd, internal=TRUE)
 smd$ShortName <- gsub("_.*","",smd$Name)
 smd$ShortName <- gsub("-","blank",smd$ShortName)
 
-
 #Add the print order and deposition number to the metadata
 ldf <- MEMA::readLogData("~/Documents/MEMATestExp/LI8V002/Raw Data and Metadata/20150403-100218.xml")
  #Save the print metadata to a file for use inside the MEMA package

@@ -2,7 +2,7 @@
 % Please edit documentation in R/derivedParameter_functions.R
 \name{spotCellDensities}
 \alias{spotCellDensities}
-\title{Calculate the neghborhood density around each cell}
+\title{Calculate the neighborhood density around each cell}
 \usage{
 spotCellDensities(spot, radius = (max(spot$X) - min(spot$X))/5)
 }
@@ -15,6 +15,6 @@ spotCellDensities(spot, radius = (max(spot$X) - min(spot$X))/5)
 A numeric vector of length nrow(spot) with the cell density values
 }
 \description{
-Calculate the neghborhood density around each cell
+Calculate the neighborhood density around each cell
 }
 

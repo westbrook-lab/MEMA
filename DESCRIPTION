@@ -1,18 +1,17 @@
 Package: MEMA
 Type: Package
 Title: Functions to preprocess and normalize MEMA data
-Version: 0.1.0.9000
+Version: 0.1.1.9001
 Date: 2015-07-29
 Authors@R: person("Mark", "Dane", ,"dane@ohsu.edu", role = c("aut", "cre"))
 Description: The functions in this package merge imaging data with the metadata, normalize the data, summarize to the well and spot level and provide some quality measures.
-License: MIT
+License: MIT + file LICENSE
 LazyData: TRUE
 Imports: data.table,
     gdata(>= 2.13.3),
     limma (>= 3.20.9),
     reshape2(>= 1.4.1),
     XML(>= 3.98-1.1),
-    ggplot2(>= 1.0.1),
     mclust
 Depends: R (>= 2.10)
 Suggests: knitr,

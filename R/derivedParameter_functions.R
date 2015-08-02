@@ -1,6 +1,6 @@
 #Functions to support MEMAs printed in 8 well plates
 
-#' Calculate the neghborhood density around each cell
+#' Calculate the neighborhood density around each cell
 #'@param spot A datatable with X and Y columns
 #'@param radius The radial distance that defines the neighborhood around the cell
 #'@return A numeric vector of length nrow(spot) with the cell density values
