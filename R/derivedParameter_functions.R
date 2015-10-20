@@ -6,10 +6,26 @@
 #'@return A numeric vector of length nrow(spot) with the cell density values
 #'
 #'@export
-spotCellDensities <- function(spot,radius=(max(spot$X)-min(spot$X))/5) {
+spotCellDensitiesScanR <- function(spot,radius=(max(spot$X)-min(spot$X))/5) {
   distMatrix <- as.matrix(dist(spot[,list(X,Y)]))
   count <- apply(distMatrix, 2, function(x){sum(x <= radius) - 1})
   cellDensity <- count/(pi*radius^2)
+  return(cellDensity)
+}
+
+#' Calculate the neighborhood density around each cell
+#'@param spot A datatable with X and Y columns
+#'@param radius The radial distance that defines the neighborhood around the cell
+#'@return A numeric vector of length nrow(spot) with the cell density values
+#'
+#'@export
+spotCellDensities<- function (spot, radius = (max(spot$Cells_Location_Center_X) - min(spot$Cells_Location_Center_X))/5) 
+{
+  distMatrix <- as.matrix(dist(spot[, list(Cells_Location_Center_X, Cells_Location_Center_Y)]))
+  count <- apply(distMatrix, 2, function(x) {
+    sum(x <= radius) - 1
+  })
+  cellDensity <- count/(pi * radius^2)
   return(cellDensity)
 }
 
@@ -61,15 +77,15 @@ positionParms <- function(DT,densityRadius = 160, outerThresh=.2, wedges=18, spa
   return(lDT[,list(Barcode,Well,Spot,ObjectID,XLocal,YLocal,RadialPosition,Theta,Wedge,Density,Sparse,OuterCell,Perimeter)])
 }
 
-#Calculate the polar coordinate theta value
+#'Calculate the polar coordinate theta value
+#'
+#'Return the polar coordinate theta value that starts at 0 along the positive Y axis and increases to 360 in a clockwise direction.
+#'
+#'@param x The x numeric value in cartesian coordinates.
+#'@param y The y numeric value in cartesian coordinates.
+#'@return The theta value of the X and y converted to polar coordinates.
 #
-#Return the polar coordinate theta value that starts at 0 along the positive Y axis and increases to 360 in a clockwise direction.
-#
-#@param x The x numeric value in cartesian coordinates.
-#@param y The y numeric value in cartesian coordinates.
-#@return The theta value of the X and y converted to polar coordinates.
-#
-#
+#'@export
 # Function from Roland on Stack Overflow
 #http://stackoverflow.com/questions/23018056/convert-cartesian-angles-to-polar-compass-cardinal-angles-in-r
 calcTheta <- function(x,y) {
@@ -78,12 +94,12 @@ calcTheta <- function(x,y) {
   res %% 360
 }
 
-#\code{findPerimeterCell} Determine the perimeter cell in wedge
-#
-# @param x A datatable or dataframe with a RadialPosition column
-# @return A logical vector the length of x with a TRUE value for the Perimeter cell
-#
-#
+#'\code{findPerimeterCell} Determine the perimeter cell in wedge
+#'
+#' @param x A datatable or dataframe with a RadialPosition column
+#' @return A logical vector the length of x with a TRUE value for the Perimeter cell
+#'
+#'
 findPerimeterCell <- function(x){
   if(!nrow(x)==0){
     perimeterLogicals <- vector(length=nrow(x))
@@ -92,15 +108,15 @@ findPerimeterCell <- function(x){
   return(perimeterLogicals)
 }
 
-#Classify Outer cells
-#
-#\code{labelOuterCells} Determine if a cell is an Outer cell in the spot
-#
-# @param x A numeric vector of RadialPositions
-# @param thresh A quantile value between 0 and 1 used to threshold x. The returned logical will be TRUE for cells with x values in quantiles greater than thresh.
-# @return A logical vector the length of x with a TRUE value for the Outer cells
-#
-#
+#'Classify Outer cells
+#'
+#'\code{labelOuterCells} Determine if a cell is an Outer cell in the spot
+#'
+#' @param x A numeric vector of RadialPositions
+#' @param thresh A quantile value between 0 and 1 used to threshold x. The returned logical will be TRUE for cells with x values in quantiles greater than thresh.
+#' @return A logical vector the length of x with a TRUE value for the Outer cells
+#'
+#'
 labelOuterCells <- function(x, thresh=.75){
   outerLogicals <- NULL
   if(!length(x)==0){
@@ -109,14 +125,14 @@ labelOuterCells <- function(x, thresh=.75){
   return(outerLogicals)
 }
 
-# Cluster using kmeans
-#
-# \code{kmeansClusterValue} is a wrapper function for perfoming kmeans clustering
-# @param x A numeric vector to be clustered
-# @param centers The number of centers or clusters to find.
-# @return The cluster assignments for x using the base kmeans command.
-#
-#
+#' Cluster using kmeans
+#'
+#' \code{kmeansClusterValue} is a wrapper function for perfoming kmeans clustering
+#' @param x A numeric vector to be clustered
+#' @param centers The number of centers or clusters to find.
+#' @return The cluster assignments for x using the base kmeans command.
+#'
+#'
 kmeansClusterValue <- function (x, centers = 2)
 {
   #browser()
@@ -132,6 +148,29 @@ kmeansClusterValue <- function (x, centers = 2)
   return(xkmeans[["cluster"]])
 }
 
+#' Cluster using kmeans
+#'
+#' \code{kmeansDNAClusterValue} is a wrapper function for perfoming kmeans clustering
+#' @param x A numeric vector to be clustered
+#' @param centers The number of centers or clusters to find.
+#' @return The cluster assignments for x using the base kmeans command.
+#'
+#'
+kmeansDNACluster <- function (x, centers = 2) 
+{
+  #browser()
+  x <- data.frame(x)
+  xkmeans <- kmeans(x, centers = centers)
+  #Swap cluster IDs to make sure cluster 2 has higher values
+  if(centers==2){
+    if(xkmeans$centers[1] > xkmeans$centers[2]){
+      tmp <- xkmeans$cluster == 1
+      xkmeans$cluster[xkmeans$cluster == 2] <- 1L
+      xkmeans$cluster[tmp] <- 2L
+    }
+  }
+  return(xkmeans$cluster)
+}
 
 #'kMeans cluster an intensity value
 #'
@@ -149,5 +188,21 @@ kmeansCluster <- function(x,value,ctrlLigand="HighSerum"){
   clusters <- rep.int(0,nrow(x))
   clusters[x[[value]]>ctrlPositiveThresh] <- 1
   return(clusters)
+}
+
+#' Count the number of neigbors around a nuclei
+#' 
+#'@param spot A data.table with \code{spot$Nuclei_CP_AreaShape_Center_X} and 
+#'\code{spot$Nuclei_CP_AreaShape_Center_Y} values for each cell. 
+#'@param radius The radius around the center of each cell used to count neighbor cells.
+#'@export
+
+cellNeighbors<- function (spot, radius = (max(spot$Nuclei_CP_AreaShape_Center_X) - min(spot$Nuclei_CP_AreaShape_Center_X))/5) 
+{
+  distMatrix <- as.matrix(dist(spot[, list(Nuclei_CP_AreaShape_Center_X, Nuclei_CP_AreaShape_Center_Y)]))
+  count <- apply(distMatrix, 2, function(x) {
+    sum(x <= radius) - 1
+  })
+  return(count)
 }
 

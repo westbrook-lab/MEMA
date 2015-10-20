@@ -55,3 +55,34 @@ loessModel <- function(data, value, span){
   predictedMedian <- median(dataPredicted, na.rm = TRUE)
   dataNormed <- dataPredicted/predictedMedian
 }
+
+#' RZS Normalize a Column of Data
+#'
+#' \code{normRZSWellsWithinPlate} normalizes all elements of DT[[value]] by
+#' subtracting the median of DT[[value]] of all baseECM spots in the
+#' baseL wells, then divides the result by the MAD*1.48 of all baseECM spots in
+#' the baseL wells
+#'@param DT A datatable with value, baseECM and baseL, ECMpAnnotID and
+#'LigandAnnotID columns
+#'@param value A single column name of the value to be normalized
+#'@param baseECM A single character string or a regular expression that selects
+#'the ECM(s) that are used as the base for normalization.
+#'@param baseL A single character string or a regular expression that selects
+#'the ligand used as the base for normalization.
+#'@return a vector of RZS normalized values
+#'@export
+#'
+normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
+  if(!"ECMpAnnotID" %in% colnames(DT)) stop (paste("DT must contain an ECMpAnnotID column."))
+  if(!"LigandAnnotID" %in% colnames(DT)) stop (paste("DT must contain a LigandAnnotID column."))
+  if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
+
+  valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID) & grepl(baseL,DT$LigandAnnotID)), value, with=FALSE]), na.rm = TRUE)
+  if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, gaseECM, baseL))
+
+  valueMAD <- mad(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseL,DT$LigandAnnotID)),value, with=FALSE]), na.rm = TRUE)
+  #Correct for 0 MAD values
+  valueMAD <- valueMAD+.01
+  normedValues <- (DT[,value,with=FALSE]-valueMedian)/valueMAD
+  return(normedValues)
+}

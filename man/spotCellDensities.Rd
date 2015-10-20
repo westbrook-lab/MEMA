@@ -4,7 +4,8 @@
 \alias{spotCellDensities}
 \title{Calculate the neighborhood density around each cell}
 \usage{
-spotCellDensities(spot, radius = (max(spot$X) - min(spot$X))/5)
+spotCellDensities(spot, radius = (max(spot$Cells_Location_Center_X) -
+  min(spot$Cells_Location_Center_X))/5)
 }
 \arguments{
 \item{spot}{A datatable with X and Y columns}
