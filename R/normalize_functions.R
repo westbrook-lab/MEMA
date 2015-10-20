@@ -1,5 +1,17 @@
 #Normalization functions for processing MEMAs
 
+#' Median normalize a vector
+#' 
+#' @param DT A datatable with a column \code{value}
+#' @param value The name of the column in DT to be normalized
+#' 
+#' @return A numeric vector that is \code{DT[[value]]} dvided by its median
+#' @export
+#' 
+medianNorm <- function(DT, value){
+  normedValues <- DT[, value, with = FALSE]/median(unlist(DT[, value, with = FALSE]), na.rm=TRUE)
+}
+
 #' Normalize the proliferation ratio signal to the collagen 1 values
 #' @param x a dataframe or datatable with columns names ProliferatioRatio
 #' and ShortName. ShortName must include at least one entry of COL1 or COL I.
@@ -85,4 +97,21 @@ normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
   valueMAD <- valueMAD+.01
   normedValues <- (DT[,value,with=FALSE]-valueMedian)/valueMAD
   return(normedValues)
+}
+
+#' Normalize selected values in a dataset on a plate basis
+#' 
+#' A wrapper function for \code{normRZSWellsWithinPlate} that selects the
+#' \code{_CP_|_QI_|_PA_|SpotCellCount|Lineage} columns of dt if they exist and 
+#' normalizes them on a plate basis
+#' @param dt A data.table with a \code{Barcode} column numeric values to be RZS normalized 
+#'  using all ECM proteins in the FBS well
+#' @return A datatable with the normalized values
+#' @export
+normRZSDataset <- function(dt){
+  parmNormedList <- lapply(grep("_CP_|_QI_|_PA_|SpotCellCount|Lineage",colnames(dt),value = TRUE), function(parm){
+    dt <- dt[,paste0(parm,"_RZSNorm") := normRZSWellsWithinPlate(.SD, value=parm, baseECM = ".*",baseL = "FBS"), by="Barcode"]
+    return(dt)
+  })
+  return(parmNormedList[[length(parmNormedList)]])
 }

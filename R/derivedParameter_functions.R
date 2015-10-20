@@ -99,7 +99,7 @@ calcTheta <- function(x,y) {
 #' @param x A datatable or dataframe with a RadialPosition column
 #' @return A logical vector the length of x with a TRUE value for the Perimeter cell
 #'
-#'
+#' @export
 findPerimeterCell <- function(x){
   if(!nrow(x)==0){
     perimeterLogicals <- vector(length=nrow(x))
@@ -116,7 +116,7 @@ findPerimeterCell <- function(x){
 #' @param thresh A quantile value between 0 and 1 used to threshold x. The returned logical will be TRUE for cells with x values in quantiles greater than thresh.
 #' @return A logical vector the length of x with a TRUE value for the Outer cells
 #'
-#'
+#' @export
 labelOuterCells <- function(x, thresh=.75){
   outerLogicals <- NULL
   if(!length(x)==0){
@@ -132,7 +132,7 @@ labelOuterCells <- function(x, thresh=.75){
 #' @param centers The number of centers or clusters to find.
 #' @return The cluster assignments for x using the base kmeans command.
 #'
-#'
+#' @export
 kmeansClusterValue <- function (x, centers = 2)
 {
   #browser()
@@ -155,7 +155,7 @@ kmeansClusterValue <- function (x, centers = 2)
 #' @param centers The number of centers or clusters to find.
 #' @return The cluster assignments for x using the base kmeans command.
 #'
-#'
+#' @export
 kmeansDNACluster <- function (x, centers = 2) 
 {
   #browser()
@@ -206,3 +206,16 @@ cellNeighbors<- function (spot, radius = (max(spot$Nuclei_CP_AreaShape_Center_X)
   return(count)
 }
 
+#' Calculate the proportion of cells that are classfied as having 2N DNA
+#' 
+#' @param x numeric vector of cycle states with values of 1 for 2n and 2 for 4N
+#' @return proportion of cells in x that are in 2N
+#' @export
+calc2NProportion <- function(x){
+  if(!length(x)) stop("Calculating 2N/4N proportion on an empty group")
+  if(sum(grepl("[^12]",x)))stop("Invalid cycle state passed to calc2NProportion")
+  if(sum(x==1)) {
+    proportion2N <- sum(x==1)/length(x)
+  } else proportion2N <- 0
+  return(proportion2N)
+}
