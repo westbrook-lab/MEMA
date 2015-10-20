@@ -170,6 +170,31 @@ coerceAllECM <- function(df){
   return(df)
 }
 
+#' Create a short display version of the LigandAnnotID
+#' 
+#' @param ligand The name of the ligand
+#' @param annotIDs The annotIDs to be simplified
+#' @return a vector with the ligand and the last string of each annotID pasted with a _
+#' @export
+simplifyLigandAnnotID <- function(ligand,annotIDs){
+  if(length(annotIDs)){
+    splits <- strsplit2(annotIDs, split = "_")
+    #Find the last non-empty substring
+    us <- apply(splits,1,function(x){
+      if(x[length(x)]==""){
+        if (length(x)< 2) stop("There are not enough substrings in a ligandAnnotID")
+        u <- x[length(x)-1]
+      } else{
+        u <- x[length(x)]
+      }
+      return(u)
+    })
+    ligands <- paste(ligand,us, sep = "_")
+  } else ligands <- annotIDs
+  return(ligands)
+}
+
+
 #Parse controlled vocabulary data for ECM, Ligand and ConcentrationRank values
 #
 #\code{parseCVContents} returns a datatable with new columns based on the Name
