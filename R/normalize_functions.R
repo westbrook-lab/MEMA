@@ -90,7 +90,7 @@ normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
 
   valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID) & grepl(baseL,DT$LigandAnnotID)), value, with=FALSE]), na.rm = TRUE)
-  if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, gaseECM, baseL))
+  if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, baseECM, baseL))
 
   valueMAD <- mad(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseL,DT$LigandAnnotID)),value, with=FALSE]), na.rm = TRUE)
   #Correct for 0 MAD values

@@ -62,7 +62,7 @@ createl3 <- function(cDT, lthresh = lthresh){
 createl4 <- function(l3){
   #Add a count of replicates
   l3 <- l3[,Spot_PA_ReplicateCount := .N,by="LigandAnnotID,ECMpAnnotID"]
-  l4Names<-grep("Norm|LigandAnnotID|ECMpAnnotID|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
+  l4Names<-grep("Norm$|LigandAnnotID|ECMpAnnotID|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
   #remove the _SE values
   l4Names <- grep("_SE",l4Names, value = TRUE, invert = TRUE)
   l4Keep<-l3[,l4Names,with=FALSE]
