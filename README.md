@@ -7,4 +7,4 @@ or in 8 well plates that can hold an array of ~700 spots.
 The cells are stained with up to four antibodies that typically target DNA and specific proteins. The spots are imaged at the 
 population or cell level using quantitative immunofluroescence.
 
-The MEMA package functions merge the experiemnt metadata with the imaging data, perform a bivariate loess-based QA and normalize to well and spot levels.
+The MEMA package functions merge the experiment metadata with the imaging data, perform a bivariate loess-based QA and support various normalization methods.
