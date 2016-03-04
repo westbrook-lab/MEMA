@@ -12,32 +12,34 @@ se <- function(x) sqrt(var(x,na.rm=TRUE)/length(na.omit(x)))
 #'  regions
 #'  @return A datatable of spot-level, median summarized data with standard error values and 
 #'  metadata
-#'  @export
-createl3 <- function(cDT, lthresh = lthresh){
+#' @export
+createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   #Summarize cell data to medians of the spot parameters
-  parameterNames<-grep(pattern="(Children|_CP_|_PA_|Barcode|^Spot$|^Well$)",x=names(cDT),value=TRUE)
+  parameterNames<-grep(pattern="(Children|_CP_|_PA_)",x=names(cDT),value=TRUE)
   
-  #Remove any spot-normalized and cell level parameters
-  parameterNames <- grep("SpotNorm|^Nuclei_PA_Gated_EduPositive$|^Nuclei_PA_Gated_EduPositive_RZSNorm$",parameterNames,value=TRUE,invert=TRUE)
+  #Remove spot-normalized or summarized parameters
+  parameterNames <- grep("SpotNorm|Wedge|Sparse|OuterCell|Center|^Nuclei_PA_Gated_EduPositive$",parameterNames,value=TRUE,invert=TRUE)
   
-  #Remove any raw parameters
-  parameterNames <- grep("Barcode|^Spot$|^Well$|Norm|Nuclei_CP_Intensity_MedianIntensity_Dapi$|Cytoplasm_CP_Intensity_MedianIntensity_Actin$|Cytoplasm_CP_Intensity_MedianIntensity_CellMask$|Cytoplasm_CP_Intensity_MedianIntensity_MitoTracker$|Nuclei_CP_Intensity_MedianIntensity_H3$|Nuclei_CP_Intensity_MedianIntensity_Fibrillarin$|Nuclei_CP_Intensity_MedianIntensity_Edu$|Cytoplasm_CP_Intensity_MedianIntensity_KRT5$|Cytoplasm_CP_Intensity_MedianIntensity_KRT19$|Spot_PA_SpotCellCount$", parameterNames, value = TRUE)
-  
-  cDTParameters<-cDT[,parameterNames,with=FALSE]
-  
-  slDT<-cDTParameters[,lapply(.SD,numericMedian),keyby="Barcode,Well,Spot"]
-  slDTse <- cDTParameters[,lapply(.SD,se),keyby="Barcode,Well,Spot"]
-  
+  slDT<-cDT[,lapply(.SD, numericMedian), by="Barcode,Well,Spot", .SDcols=parameterNames]
+  #Use seNames to select the parameters that get SE values
+  if(!is.null(seNames)){
+    seNamesPattern<-paste(seNames,collapse="|")
+    seNames <- grep(seNamesPattern,parameterNames,value=TRUE)
+    slDTse <- slDT[,lapply(.SD,se), by="Barcode,Well,Spot", .SDcols=seNames]
+  } else{
+    slDTse <- slDT[,lapply(.SD,se), by="Barcode,Well,Spot"]
+  }
+ 
   #Add _SE to the standard error column names
   setnames(slDTse, grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE),"_SE"))
   
   #Merge back in the spot and well metadata
-  #TODO: Convert the logic to not name the metadata
-  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Endpoint|ECMp|MEP|Barcode|^Well$|^Spot$)", x=colnames(cDT), value=TRUE)
+  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Endpoint|ECMp|MEP|Well_Ligand|ImageID|Barcode|^Well$|^Spot$)", x=colnames(cDT), value=TRUE)
   setkey(cDT,Barcode, Well,Spot)
   mDT <- cDT[,metadataNames,keyby="Barcode,Well,Spot", with=FALSE]
   slDT <- mDT[slDT, mult="first"]
   #Merge in the standard err values
+  setkey(slDTse, Barcode, Well, Spot)
   slDT <- slDTse[slDT]
   #Add a count of replicates
   slDT <- slDT[,Spot_PA_ReplicateCount := .N,by="LigandAnnotID,ECMpAnnotID"]
@@ -47,7 +49,7 @@ createl3 <- function(cDT, lthresh = lthresh){
   
   #Add well level QA Scores to spot level data
   slDT <- slDT[,QAScore := calcQAScore(.SD, threshold=lthresh, maxNrSpot = max(cDT$ArrayRow)*max(cDT$ArrayColumn),value="Spot_PA_LoessSCC"),by="Barcode,Well"]
-}#End of create l3
+}
 
 
 #' Summarize spot level data to the MEP level
@@ -59,21 +61,30 @@ createl3 <- function(cDT, lthresh = lthresh){
 #' @return A datatable of MEP level, median summarized data with standard error values and 
 #'  metadata
 #' @export
-createl4 <- function(l3){
+createl4 <- function(l3, seNames=NULL){
   #Add a count of replicates
   l3 <- l3[,Spot_PA_ReplicateCount := .N,by="LigandAnnotID,ECMpAnnotID"]
-  l4Names<-grep("Norm|LigandAnnotID|ECMpAnnotID|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
+  l4Names<-grep("Loess$|RUV3|Norm|LigandAnnotID|ECMpAnnotID|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
   #remove the _SE values
-  l4Names <- grep("_SE",l4Names, value = TRUE, invert = TRUE)
+  l4Names <- grep("_SE|NormMethod",l4Names, value = TRUE, invert = TRUE)
   l4Keep<-l3[,l4Names,with=FALSE]
   l4DT<-l4Keep[,lapply(.SD,numericMedian),keyby="LigandAnnotID,ECMpAnnotID,Barcode"]
-  
-  l4DTse <- l4Keep[,lapply(.SD,se),keyby="LigandAnnotID,ECMpAnnotID,Barcode"]
+  #Use seNames to select the parameters that get SE values
+  if(!is.null(seNames)){
+    seNamesPattern<-paste(seNames,collapse="|")
+    seNames <- grep(seNamesPattern,l4Names,value=TRUE)
+    l4DTse <- l4Keep[,lapply(.SD,se),keyby="LigandAnnotID,ECMpAnnotID,Barcode", .SDcols=seNames]
+  } else{
+    l4DTse <- l4Keep[,lapply(.SD,se),keyby="LigandAnnotID,ECMpAnnotID,Barcode"]
+  }
+
   #Add _SE to the standard error column names
   setnames(l4DTse, grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE),"_SE"))
-  
+
+  l3Names <- grep("Barcode|Well|CellLine|Ligand|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP", colnames(l3), value=TRUE)
   #Merge back in the replicate metadata
-  mDT <- l3[,list(Well,CellLine,Ligand,Endpoint488,Endpoint555,Endpoint647,EndpointDAPI,ECMp,MEP),keyby="LigandAnnotID,ECMpAnnotID,Barcode"]
+  mDT <- l3[,l3Names,keyby="LigandAnnotID,ECMpAnnotID,Barcode", with=FALSE]
+  setkey(mDT,LigandAnnotID,ECMpAnnotID,Barcode)
   l4DT <- mDT[l4DT, mult="first"]
   l4DT <- l4DTse[l4DT]
   

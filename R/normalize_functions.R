@@ -82,7 +82,7 @@ loessModel <- function(data, value, span){
 #'@param baseL A single character string or a regular expression that selects
 #'the ligand used as the base for normalization.
 #'@return a vector of RZS normalized values
-#'@export
+#' @export
 #'
 normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
   if(!"ECMpAnnotID" %in% colnames(DT)) stop (paste("DT must contain an ECMpAnnotID column."))
@@ -90,7 +90,7 @@ normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
 
   valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID) & grepl(baseL,DT$LigandAnnotID)), value, with=FALSE]), na.rm = TRUE)
-  if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, gaseECM, baseL))
+  if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, baseECM, baseL))
 
   valueMAD <- mad(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseL,DT$LigandAnnotID)),value, with=FALSE]), na.rm = TRUE)
   #Correct for 0 MAD values
@@ -114,4 +114,252 @@ normRZSDataset <- function(dt){
     return(dt)
   })
   return(parmNormedList[[length(parmNormedList)]])
+}
+
+#'Apply RUV3 and Loess Normalization to the signals in a dataset
+#' @export
+normRUV3LoessResiduals <- function(dt, k){
+  setkey(dt,Barcode,Well,Ligand,ECMp)
+  metadataNames <- "Barcode|Well|^Spot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
+  signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
+  
+  #Add residuals from subtracting the biological medians from each value
+  residuals <- dt[,lapply(.SD,calcResidual), by="Barcode,Well,Ligand,ECMp", .SDcols=signalNames]
+  #Add within array location metadata
+  residuals$Spot <- as.integer(dt$Spot)
+  residuals$ArrayRow <- dt$ArrayRow
+  residuals$ArrayColumn <- dt$ArrayColumn
+  #Create a signal type
+  dt$SignalType <- "Signal"
+  residuals$SignalType <- "Residual"
+  srDT <- rbind(dt,residuals)
+  
+  #Add to carry metadata into matrices
+  srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
+  srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  
+  #Set up the M Matrix to denote replicates
+  nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
+  nrLigandWells <- length(unique(srDT$BWL[srDT$SignalType=="Signal"]))-nrControlWells
+  M <-matrix(0, nrow = length(unique(srDT$BWL[srDT$SignalType=="Signal"])), ncol = nrLigandWells+1)
+  rownames(M) <- unique(srDT$BWL[srDT$SignalType=="Signal"])
+  #Indicate the control wells in the last column
+  Mc <- M[grepl("FBS",rownames(M)),]
+  Mc[,ncol(Mc)] <-1L
+  #Subset to the ligand wells and mark as non-replicate
+  Ml <- M[!grepl("FBS",rownames(M)),]
+  for(i in 1:nrLigandWells) {
+    Ml[i,i] <- 1
+  }
+  #Add the replicate wells and restore the row order
+  M <- rbind(Mc,Ml)
+  M <- M[order(rownames(M)),]
+  
+  srmList <- lapply(signalNames, function(signalName, dt){
+    srm <- signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "SERC", "SignalType", signalName)])
+    return(srm)
+  },dt=srDT)
+
+ 
+  names(srmList) <- signalNames
+  
+  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
+    Y <- srmList[[srmName]]
+    #Hardcode in identification of residuals as the controls
+    resStart <- ncol(Y)/2+1
+    cIdx=resStart:ncol(Y)
+    nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName) #Normalize the spot level data
+    nY$k <- k
+    nY$SignalName <- paste0(srmName,"RUV3")
+    setnames(nY,srmName,paste0(srmName,"RUV3"))
+    return(nY)
+  }, srmList=srmList, M=M, k=k)
+  
+  #Add Loess normalized values for each signal
+  RUV3LoessList <- lapply(srmRUV3List, function(dt){
+    dtRUV3Loess <- loessNormArray(dt)
+  })
+  
+  #Combine the normalized signal into one data.table
+  #with one set of metadata
+  signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
+    sdt <- dt[,grep("_CP_|_PA_",colnames(dt)), with=FALSE]
+  }))
+  
+  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
+  signalMetadataDT <- signalMetadataDT[,mel := NULL]
+  signalMetadataDT <- signalMetadataDT[,Residual := NULL]
+  return(signalMetadataDT)
+}
+
+#' Loess normalize an array using the spatial residuals
+loessNorm <- function(Value,Residual,ArrayRow,ArrayColumn){
+  dt <-data.table(Value=Value,Residual=Residual,ArrayRow=ArrayRow,ArrayColumn=ArrayColumn)
+  lm <- loess(Residual~ArrayRow+ArrayColumn, dt, span=.7)
+  dt$ResidualLoess<-predict(lm)
+  dt <- dt[,ValueLoess := Value-ResidualLoess]
+  return(ValueLoess = dt$ValueLoess)
+}
+
+#' Loess normalize values within an array
+#'@export
+loessNormArray <- function(dt){
+  #Identify the Signal name
+  signalName <- unique(dt$SignalName)
+  setnames(dt,signalName,"Value")
+  #Get the median of the replicates within the array
+  dt <- dt[,mel := median(Value), by=ECMp]
+  #Get the residuals from the spot median
+  dt <- dt[,Residual := Value-mel]
+  #Subtract the loess model of each array's residuals from the signal
+  dt <- dt[, ValueLoess:= loessNorm(Value,Residual,ArrayRow,ArrayColumn), by="BWL"]
+  setnames(dt,"Value", signalName)
+  setnames(dt,"ValueLoess", paste0(signalName,"Loess"))
+  return(dt)
+}
+
+
+#' Calculate the residuals from the median of a vector of numeric values
+#' @export
+calcResidual <- function(x){
+  mel <- median(x, na.rm=TRUE)
+  return(x-mel)
+}
+
+#' Apply RUV3 normalization on a signal and its residuals
+#' 
+#' Assumes there are signal values in the first half of each row
+#' and residuals in the second half
+#' @export
+RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName){
+  nY <- RUVIII(Y, M, cIdx, k)[["newY"]]
+  #Remove residuals
+  nY <- nY[,1:(ncol(nY)/2)]
+  #melt matrix to have ECMp and Ligand columns
+  nYm <- melt(nY, varnames=c("BWL","SERC"), value.name=signalName)
+  splits <- limma::strsplit2(nYm$BWL,split = "_")
+  nYm$Barcode <- splits[,1]
+  nYm$Well <- splits[,2]
+  nYm$Ligand <- paste(splits[,3],splits[,4],sep="_")
+  nYm$Ligand <-gsub("_$","",nYm$Ligand)
+  splits <- limma::strsplit2(nYm$SERC,split = "_")
+  nYm$Spot <- as.integer(splits[,1])
+  nYm$ECMp <- splits[,2]
+  nYm$ArrayRow <- as.integer(splits[,3])
+  nYm$ArrayColumn <- as.integer(splits[,4])
+  nYm$MEP <- paste(nYm$ECMp,nYm$Ligand, sep="_")
+  return(data.table(nYm))
+}
+
+#' Generate a matrix of signals and residuals
+#' 
+#' This function reorganizes a data.table into a matrix suitable for
+#' RUV3 normalization.
+#' 
+#'@param dt a data.table with columns named BWL, SERC, SignalType and a column 
+#' named by the unique value in the SignalType column.
+#'@return A numeric matrix with BWL rows and two sets of SERC columns. The second
+#'set of SERC columns are the residuals from the medians of each column and have
+#'"_Rel" appended to their names.
+signalResidualMatrix <- function(dt){
+  signalName <- colnames(dt)[ncol(dt)]
+  if(grepl("Logit", signalName)){
+    fill <- log2(.01/(1-.01))
+  } else if(grepl("Log", signalName)){
+    fill <- log2(.001)
+  } else {
+    fill <- 0
+  }
+  
+  dts <- dcast(dt[dt$SignalType=="Signal",], BWL~SERC, value.var=signalName, fill=fill, na.rm=TRUE)
+  dtr <- dcast(dt[dt$SignalType=="Residual",], BWL~SERC, value.var=signalName, fill=fill, na.rm=TRUE)
+  rowNames <- dts$BWL
+  dts <- dts[,BWL := NULL]
+  dtr <- dtr[,BWL:=NULL]
+  setnames(dtr,colnames(dtr),paste0(colnames(dtr),"_Rel"))
+  dtsr <- cbind(dts,dtr)
+  srm <- matrix(unlist(dtsr),nrow=nrow(dtsr))
+  rownames(srm) <- rowNames
+  colnames(srm) <- colnames(dtsr)
+  return(srm)
+}
+
+#' Perform RUV3 removal of unwanted variations
+#' This function is written by Johann Gagnon-Bartsch and will become part of the
+#' ruv package.
+#'@export
+RUVIII = function(Y, M, ctl, k=NULL, eta=NULL, average=FALSE, fullalpha=NULL)
+{
+  Y = RUV1(Y,eta,ctl)
+  if (is.null(k))
+  {
+    ycyctinv = solve(Y[,ctl]%*%t(Y[,ctl]))
+    newY = (M%*%solve(t(M)%*%ycyctinv%*%M)%*%(t(M)%*%ycyctinv)) %*% Y
+    fullalpha=NULL
+  }
+  else if (k == 0) newY = Y
+  else
+  {
+    m = nrow(Y)
+    Y0 = residop(Y,M)
+    fullalpha = t(svd(Y0%*%t(Y0))$u[,1:(m-ncol(M)),drop=FALSE])%*%Y
+    alpha = fullalpha[1:k,,drop=FALSE]
+    ac = alpha[,ctl,drop=FALSE]
+    W = Y[,ctl]%*%t(ac)%*%solve(ac%*%t(ac))
+    newY = Y - W%*%alpha
+  }
+  if (average) newY = ((1/apply(M,2,sum))*t(M)) %*% newY
+  return(list(newY = newY, fullalpha=fullalpha))
+}
+
+#' Apply the RUV3 algortihm 
+normRUV3Dataset <- function(dt, k){
+  #browser()
+  #Setup data with plate as the unit
+  #There are 694 negative controls and all plates are replicates
+  
+  setkey(dt, Barcode,Well,Spot)     #Sort the data
+  metadataNames <- "Barcode|Well|^Spot$"
+  signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
+  
+  dt$WS <- paste(dt$Well, dt$Spot,sep="_") #Add to carry metadata to matrix
+  
+  nYL <- lapply(signalNames, function(signal, dt, M){
+    #Create appropriate fill for missing values for each signal
+    if(grepl("EdU|Proportion|Ecc", signal)){
+      fill <- log2(.01/(1-.01))
+    } else if(grepl("Log", signal)){
+      fill <- log2(.001)
+    } else {
+      fill <- 0
+    }
+    
+    #Cast into barcode rows and well spot columns
+    dtc <- dcast(dt, Barcode~WS, value.var=signal, fill=fill)
+    #Remove the Barcode column and use it as rownames in the matrix
+    barcodes <-dtc$Barcode
+    dtc <- dtc[,Barcode := NULL]
+    Y <- matrix(unlist(dtc), nrow=nrow(dtc), dimnames=list(barcodes, colnames(dtc)))
+    k<-min(k, nrow(Y)-1)
+    cIdx <- which(grepl("A03",colnames(Y)))
+    nY <- RUVIII(Y, M, cIdx, k)[["newY"]]
+    #melt matrix to have ECMp and Ligand columns
+    nYm <- melt(nY, varnames=c("Barcode","WS"),  as.is=TRUE)
+    nYm <- data.table(nYm)
+    
+    #Add the name of the signal and convert back to well and spot
+    nYm$Signal <- paste0(signal,"_Norm")
+    return(nYm)
+    
+  }, dt=dt, M=matrix(1,nrow=length(unique(dt$Barcode)))
+  # ,mc.cores = detectCores())
+  )
+  
+  nYdtmelt <- rbindlist(nYL)
+  nY <- dcast(nYdtmelt, Barcode+WS~Signal, value.var="value")
+  nY$Well <- gsub("_.*","",nY$WS)
+  nY$Spot <- as.integer(gsub(".*_","",nY$WS))
+  nY <- nY[,WS:=NULL]
+  return(nY)
 }

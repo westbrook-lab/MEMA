@@ -301,3 +301,23 @@ addArrayPositionNoRotate<-function(df,gridsPerRow=4){
   return(df)
 }
 
+
+#' Wrapper function to log intensity values in a data.table
+#' @export
+logIntensities <- function(dt){
+  intensityNames <- grep("Intensity",colnames(dt), value=TRUE, ignore.case = TRUE)
+  dtLog <- dt[,lapply(.SD,log2),.SDcols=intensityNames]
+  setnames(dtLog,colnames(dtLog),paste0(colnames(dtLog),"Log2"))
+  return(cbind(dt,dtLog))
+}
+
+#' Utility function that returns log2 with lower non-infinite bound  
+#' @export
+boundedLog2 <- function(x){
+  #use the smallest non zero value as the minimum
+  xMin <- min(x)
+  if (xMin==0) xMin <- unique(x[order(x)])[2]
+  x[x==0]<- xMin
+  xLog2 <- log2(x)
+  return(xLog2)
+}

@@ -36,7 +36,7 @@ cleanDT <- function (DT) {
 #' @param value A character vector of length 1 that is the column name of the values that determine the QA score
 #' @return A single numeric value that is the proportion of spots below the threshold
 #'
-#'  @export
+#' @export
 calcQAScore <- function(DT, threshold, maxNrSpot=700, value){
   QAScore <- (nrow(DT)-sum(DT[,value,with=FALSE] < threshold))/maxNrSpot
   return (QAScore)

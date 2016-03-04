@@ -16,7 +16,7 @@ readMetadata<-function(xlsFile){
   #browser()
   sheetList<-sapply(gdata::sheetNames(path.expand(xlsFile)), gdata::read.xls, xls = path.expand(xlsFile), simplify = FALSE,stringsAsFactors=TRUE,check.names=FALSE,row.names="Row/Column")
   nrRows<-dim(sheetList[[1]])[1]
-  nrCols<-as.numeric(max(colnames(sheetList[[1]])))
+  nrCols<-max(as.numeric(colnames(sheetList[[1]])))
   nrWells=nrRows*nrCols
   sheetDF<-data.frame(lapply(sheetList,function(df,nrCols){
     #create a dataframe from all rows and columns of each sheet
