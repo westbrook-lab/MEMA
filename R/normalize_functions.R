@@ -288,7 +288,6 @@ signalResidualMatrix <- function(dt){
 #' Perform RUV3 removal of unwanted variations
 #' This function is written by Johann Gagnon-Bartsch and will become part of the
 #' ruv package.
-#'@export
 RUVIII = function(Y, M, ctl, k=NULL, eta=NULL, average=FALSE, fullalpha=NULL)
 {
   Y = RUV1(Y,eta,ctl)
@@ -343,7 +342,7 @@ normRUV3Dataset <- function(dt, k){
     Y <- matrix(unlist(dtc), nrow=nrow(dtc), dimnames=list(barcodes, colnames(dtc)))
     k<-min(k, nrow(Y)-1)
     cIdx <- which(grepl("A03",colnames(Y)))
-    nY <- RUVIII(Y, M, cIdx, k)[["newY"]]
+    nY <- MEMA:::RUVIII(Y, M, cIdx, k)[["newY"]]
     #melt matrix to have ECMp and Ligand columns
     nYm <- melt(nY, varnames=c("Barcode","WS"),  as.is=TRUE)
     nYm <- data.table(nYm)
