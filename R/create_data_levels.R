@@ -42,7 +42,7 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   setkey(slDTse, Barcode, Well, Spot)
   slDT <- slDTse[slDT]
   #Add a count of replicates
-  slDT <- slDT[,Spot_PA_ReplicateCount := .N,by="LigandAnnotID,ECMpAnnotID"]
+  slDT <- slDT[,Spot_PA_ReplicateCount := .N,by="Ligand,ECMp"]
   
   #Add the loess model of the SpotCellCount on a per well basis
   slDT <- slDT[,Spot_PA_LoessSCC := loessModel(.SD, value="Spot_PA_SpotCellCount", span=.5), by="Barcode,Well"]
@@ -63,19 +63,19 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
 #' @export
 createl4 <- function(l3, seNames=NULL){
   #Add a count of replicates
-  l3 <- l3[,Spot_PA_ReplicateCount := .N,by="LigandAnnotID,ECMpAnnotID"]
-  l4Names<-grep("Loess$|RUV3|Norm|LigandAnnotID|ECMpAnnotID|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
+  l3 <- l3[,Spot_PA_ReplicateCount := .N,by="Ligand,ECMp"]
+  l4Names<-grep("Loess$|RUV3|Norm|^Ligand|^ECMp|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
   #remove the _SE values
   l4Names <- grep("_SE|NormMethod",l4Names, value = TRUE, invert = TRUE)
   l4Keep<-l3[,l4Names,with=FALSE]
-  l4DT<-l4Keep[,lapply(.SD,numericMedian),keyby="LigandAnnotID,ECMpAnnotID,Barcode"]
+  l4DT<-l4Keep[,lapply(.SD,numericMedian),keyby="Ligand,ECMp,Barcode"]
   #Use seNames to select the parameters that get SE values
   if(!is.null(seNames)){
     seNamesPattern<-paste(seNames,collapse="|")
     seNames <- grep(seNamesPattern,l4Names,value=TRUE)
-    l4DTse <- l4Keep[,lapply(.SD,se),keyby="LigandAnnotID,ECMpAnnotID,Barcode", .SDcols=seNames]
+    l4DTse <- l4Keep[,lapply(.SD,se),keyby="Ligand,ECMp,Barcode", .SDcols=seNames]
   } else{
-    l4DTse <- l4Keep[,lapply(.SD,se),keyby="LigandAnnotID,ECMpAnnotID,Barcode"]
+    l4DTse <- l4Keep[,lapply(.SD,se),keyby="Ligand,ECMp,Barcode"]
   }
 
   #Add _SE to the standard error column names
@@ -83,8 +83,8 @@ createl4 <- function(l3, seNames=NULL){
 
   l3Names <- grep("Barcode|Well|CellLine|Ligand|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP", colnames(l3), value=TRUE)
   #Merge back in the replicate metadata
-  mDT <- l3[,l3Names,keyby="LigandAnnotID,ECMpAnnotID,Barcode", with=FALSE]
-  setkey(mDT,LigandAnnotID,ECMpAnnotID,Barcode)
+  mDT <- l3[,l3Names,keyby="Ligand,ECMp,Barcode", with=FALSE]
+  setkey(mDT,Ligand,ECMp,Barcode)
   l4DT <- mDT[l4DT, mult="first"]
   l4DT <- l4DTse[l4DT]
   

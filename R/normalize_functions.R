@@ -30,8 +30,8 @@ normProfToCol1 <- function(x){
 #' base MEP.
 #'
 #' @param DT A \code{data.table} that includes a numeric value column to be
-#'   normalized, a \code{ECMpAnnotID} column that has the printed ECM names and a
-#'   \code{Growth.Factors} or \code{LigandAnnotID}column that has the growth factor names.
+#'   normalized, a \code{ECMp} column that has the printed ECM names and a
+#'   \code{Growth.Factors} or \code{Ligand}column that has the growth factor names.
 #' @param value The name of the column of values to be normalized
 #' @param baseECM A regular expression for the name or names of the printed ECM(s) to be normalized against
 #' @param baseGF A regular expression for the name or names of the soluble growth factors to be normalized against
@@ -42,13 +42,13 @@ normProfToCol1 <- function(x){
 #'   is the pairing of baseECM  with baseGF.
 #'   @export
 normWellsWithinPlate <- function(DT, value, baseECM, baseGF) {
-  if(!c("ECMpAnnotID") %in% colnames(DT)) stop(paste("DT must contain a ECMpAnnotID column."))
+  if(!c("ECMp") %in% colnames(DT)) stop(paste("DT must contain a ECMp column."))
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
-  if("LigandAnnotID" %in% colnames(DT)){
-    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseGF,DT$LigandAnnotID)),value, with=FALSE]), na.rm = TRUE)
+  if("Ligand" %in% colnames(DT)){
+    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMp)  & grepl(baseGF,DT$Ligand)),value, with=FALSE]), na.rm = TRUE)
   } else if (c("Growth.Factors") %in% colnames(DT)) {
-    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
-  } else stop (paste("DT must contain a Growth.Factors or LigandAnnotID column."))
+    valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMp)  & grepl(baseGF,DT$Growth.Factors)),value, with=FALSE]), na.rm = TRUE)
+  } else stop (paste("DT must contain a Growth.Factors or Ligand column."))
   normedValues <- DT[,value,with=FALSE]/valueMedian
   return(normedValues)
 }
@@ -74,8 +74,8 @@ loessModel <- function(data, value, span){
 #' subtracting the median of DT[[value]] of all baseECM spots in the
 #' baseL wells, then divides the result by the MAD*1.48 of all baseECM spots in
 #' the baseL wells
-#'@param DT A datatable with value, baseECM and baseL, ECMpAnnotID and
-#'LigandAnnotID columns
+#'@param DT A datatable with value, baseECM and baseL, ECMp and
+#'Ligand columns
 #'@param value A single column name of the value to be normalized
 #'@param baseECM A single character string or a regular expression that selects
 #'the ECM(s) that are used as the base for normalization.
@@ -85,14 +85,14 @@ loessModel <- function(data, value, span){
 #' @export
 #'
 normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
-  if(!"ECMpAnnotID" %in% colnames(DT)) stop (paste("DT must contain an ECMpAnnotID column."))
-  if(!"LigandAnnotID" %in% colnames(DT)) stop (paste("DT must contain a LigandAnnotID column."))
+  if(!"ECMp" %in% colnames(DT)) stop (paste("DT must contain an ECMp column."))
+  if(!"Ligand" %in% colnames(DT)) stop (paste("DT must contain a Ligand column."))
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
 
-  valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID) & grepl(baseL,DT$LigandAnnotID)), value, with=FALSE]), na.rm = TRUE)
+  valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMp) & grepl(baseL,DT$Ligand)), value, with=FALSE]), na.rm = TRUE)
   if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, baseECM, baseL))
 
-  valueMAD <- mad(unlist(DT[(grepl(baseECM, DT$ECMpAnnotID)  & grepl(baseL,DT$LigandAnnotID)),value, with=FALSE]), na.rm = TRUE)
+  valueMAD <- mad(unlist(DT[(grepl(baseECM, DT$ECMp)  & grepl(baseL,DT$Ligand)),value, with=FALSE]), na.rm = TRUE)
   #Correct for 0 MAD values
   valueMAD <- valueMAD+.01
   normedValues <- (DT[,value,with=FALSE]-valueMedian)/valueMAD
@@ -241,8 +241,7 @@ RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName){
   splits <- limma::strsplit2(nYm$BWL,split = "_")
   nYm$Barcode <- splits[,1]
   nYm$Well <- splits[,2]
-  nYm$Ligand <- paste(splits[,3],splits[,4],sep="_")
-  nYm$Ligand <-gsub("_$","",nYm$Ligand)
+  nYm$Ligand <- splits[,3]
   splits <- limma::strsplit2(nYm$SERC,split = "_")
   nYm$Spot <- as.integer(splits[,1])
   nYm$ECMp <- splits[,2]
