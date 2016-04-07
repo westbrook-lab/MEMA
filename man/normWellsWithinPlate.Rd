@@ -8,8 +8,8 @@ normWellsWithinPlate(DT, value, baseECM, baseGF)
 }
 \arguments{
 \item{DT}{A \code{data.table} that includes a numeric value column to be
-normalized, a \code{ECMpAnnotID} column that has the printed ECM names and a
-\code{Growth.Factors} or \code{LigandAnnotID}column that has the growth factor names.}
+normalized, a \code{ECMp} column that has the printed ECM names and a
+\code{Growth.Factors} or \code{Ligand}column that has the growth factor names.}
 
 \item{value}{The name of the column of values to be normalized}
 

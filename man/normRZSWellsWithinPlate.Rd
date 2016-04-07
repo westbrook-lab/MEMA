@@ -7,8 +7,8 @@
 normRZSWellsWithinPlate(DT, value, baseECM, baseL)
 }
 \arguments{
-\item{DT}{A datatable with value, baseECM and baseL, ECMpAnnotID and
-LigandAnnotID columns}
+\item{DT}{A datatable with value, baseECM and baseL, ECMp and
+Ligand columns}
 
 \item{value}{A single column name of the value to be normalized}
 
