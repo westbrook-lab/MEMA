@@ -136,7 +136,7 @@ normRUV3LoessResiduals <- function(dt, k){
   
   #Add to carry metadata into matrices
   srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
-  srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  #srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
   srDT$SRC <- paste(srDT$Spot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
   
   #Set up the M Matrix to denote replicates
@@ -205,6 +205,94 @@ normRUV3LoessResiduals <- function(dt, k){
   return(signalMetadataDT)
 }
 
+#'Apply RUV3 and Loess Normalization to the signals in a dataset
+#' @export
+normRUV3LoessResiduals <- function(dt, k){
+  setkey(dt,Barcode,Well,Ligand,ECMp)
+  metadataNames <- "Barcode|Well|^Spot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
+  signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
+  
+  #Add residuals from subtracting the biological medians from each value
+  residuals <- dt[,lapply(.SD,calcResidual), by="Barcode,Well,Ligand,ECMp", .SDcols=signalNames]
+  #Add within array location metadata
+  residuals$Spot <- as.integer(dt$Spot)
+  residuals$ArrayRow <- dt$ArrayRow
+  residuals$ArrayColumn <- dt$ArrayColumn
+  #Create a signal type
+  dt$SignalType <- "Signal"
+  residuals$SignalType <- "Residual"
+  srDT <- rbind(dt,residuals)
+  
+  #Add to carry metadata into matrices
+  srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
+  #srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  srDT$SRC <- paste(srDT$Spot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  
+  #Set up the M Matrix to denote replicates
+  nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
+  nrLigandWells <- length(unique(srDT$BWL[srDT$SignalType=="Signal"]))-nrControlWells
+  M <-matrix(0, nrow = length(unique(srDT$BWL[srDT$SignalType=="Signal"])), ncol = nrLigandWells+1)
+  rownames(M) <- unique(srDT$BWL[srDT$SignalType=="Signal"])
+  #Indicate the control wells in the last column
+  Mc <- M[grepl("FBS",rownames(M)),]
+  Mc[,ncol(Mc)] <-1L
+  #Subset to the ligand wells and mark as non-replicate
+  Ml <- M[!grepl("FBS",rownames(M)),]
+  for(i in 1:nrLigandWells) {
+    Ml[i,i] <- 1
+  }
+  #Add the replicate wells and restore the row order
+  M <- rbind(Mc,Ml)
+  M <- M[order(rownames(M)),]
+  
+  srmList <- lapply(signalNames, function(signalName, dt){
+    srm <- signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "SRC", "SignalType", signalName)])
+    return(srm)
+  },dt=srDT)
+  names(srmList) <- signalNames
+  
+  
+  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
+    Y <- srmList[[srmName]]
+    #Hardcode in identification of residuals as the controls
+    resStart <- ncol(Y)/2+1
+    cIdx=resStart:ncol(Y)
+    nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName) #Normalize the spot level data
+    nY$k <- k
+    nY$SignalName <- paste0(srmName,"RUV3")
+    setnames(nY,srmName,paste0(srmName,"RUV3"))
+    return(nY)
+  }, srmList=srmList, M=M, k=k)
+  
+  #Reannotate with ECMp and MEP
+  ECMpDT <- unique(srDT[,list(Well,Spot,ECMp)])
+  
+  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
+    setkey(dt,Well,Spot)
+    setkey(ECMpDT,Well,Spot)
+    dtECMpDT <- merge(dt,ECMpDT)
+    dtECMpDT$MEP <- paste(dtECMpDT$ECMp,dtECMpDT$Ligand,sep="_")
+    return(dtECMpDT)
+  },ECMpDT=ECMpDT)
+  
+  
+  #Add Loess normalized values for each signal
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
+    dtRUV3Loess <- loessNormArray(dt)
+  })
+  
+  #Combine the normalized signal into one data.table
+  #with one set of metadata
+  signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
+    sdt <- dt[,grep("_CP_|_PA_",colnames(dt)), with=FALSE]
+  }))
+  
+  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
+  signalMetadataDT <- signalMetadataDT[,mel := NULL]
+  signalMetadataDT <- signalMetadataDT[,Residual := NULL]
+  return(signalMetadataDT)
+}
 #' Loess normalize an array using the spatial residuals
 loessNorm <- function(Value,Residual,ArrayRow,ArrayColumn){
   dt <-data.table(Value=Value,Residual=Residual,ArrayRow=ArrayRow,ArrayColumn=ArrayColumn)
@@ -269,10 +357,10 @@ RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName){
 #' This function reorganizes a data.table into a matrix suitable for
 #' RUV3 normalization.
 #' 
-#'@param dt a data.table with columns named BWL, SERC, SignalType and a column 
+#'@param dt a data.table with columns named BWL, SRC, SignalType and a column 
 #' named by the unique value in the SignalType column.
 #'@return A numeric matrix with BWL rows and two sets of SERC columns. The second
-#'set of SERC columns are the residuals from the medians of each column and have
+#'set of SRC columns are the residuals from the medians of each column and have
 #'"_Rel" appended to their names.
 signalResidualMatrix <- function(dt){
   signalName <- colnames(dt)[ncol(dt)]
@@ -394,7 +482,8 @@ normRUV3LoessResidualsCS <- function(dt, k){
   
   #Add to carry metadata into matrices
   srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
-  srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  #srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  srDT$SRC <- paste(srDT$Spot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
   
   #Set up the M Matrix to denote replicates
   nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
@@ -422,11 +511,11 @@ normRUV3LoessResidualsCS <- function(dt, k){
   #Add the replicate wells and restore the row order
   M <- rbind(Mc,Ml)
   M <- M[order(rownames(M)),]
+  
   srmList <- lapply(signalNames, function(signalName, dt){
-    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "SERC", "SignalType", signalName)])
+    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "SRC", "SignalType", signalName)])
     return(srm)
   },dt=srDT)
-  
   
   names(srmList) <- signalNames
   
@@ -442,8 +531,20 @@ normRUV3LoessResidualsCS <- function(dt, k){
     return(nY)
   }, srmList=srmList, M=M, k=k)
   
+  #Reannotate with ECMp and MEP
+  ECMpDT <- unique(srDT[,list(Well,Spot,ECMp)])
+  
+  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
+    setkey(dt,Well,Spot)
+    setkey(ECMpDT,Well,Spot)
+    dtECMpDT <- merge(dt,ECMpDT)
+    dtECMpDT$MEP <- paste(dtECMpDT$ECMp,dtECMpDT$Ligand,sep="_")
+    return(dtECMpDT)
+  },ECMpDT=ECMpDT)
+  
+  
   #Add Loess normalized values for each signal
-  RUV3LoessList <- lapply(srmRUV3List, function(dt){
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
     dtRUV3Loess <- loessNormArray(dt)
   })
   
@@ -457,5 +558,113 @@ normRUV3LoessResidualsCS <- function(dt, k){
   signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
   signalMetadataDT <- signalMetadataDT[,mel := NULL]
   signalMetadataDT <- signalMetadataDT[,Residual := NULL]
+  
+  #Merge the raw signal back into the dataset
+  signalMetadataDT <- merge(signalMetadataDT,dt,by=c("Barcode","Well","Spot","ArrayRow","ArrayColumn","ECMp","Ligand"))
+  
+  return(signalMetadataDT)
+}
+
+#'Apply RUV3 and Loess Normalization to the common signals in a dataset
+#' @export
+normRUV3LoessResidualsCSx2 <- function(dt, k){
+  #dt <- l3n[,colnames(l3n)[1:13], with=FALSE]
+  setkey(dt,Barcode,Well,Ligand,ECMp)
+  signalNames <- grep("RUV3Loess",colnames(dt), value=TRUE)
+  #Create a new datatable of annotated normalized signals
+  dtn <- dt[,c("Barcode","Well","Ligand","ECMp","Spot","ArrayRow","ArrayColumn",signalNames), with=FALSE]
+  #Add residuals from subtracting the biological medians from each value
+  residuals <- dtn[,lapply(.SD,calcResidual), by="Barcode,Well,Ligand,ECMp", .SDcols=signalNames]
+  #Add within array location metadata
+  residuals$Spot <- as.integer(dtn$Spot)
+  residuals$ArrayRow <- dtn$ArrayRow
+  residuals$ArrayColumn <- dtn$ArrayColumn
+  #Create a signal type
+  dtn$SignalType <- "Signal"
+  residuals$SignalType <- "Residual"
+  srDT <- rbind(dtn,residuals)
+  
+  #Add to carry metadata into matrices
+  srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
+  #srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  srDT$SRC <- paste(srDT$Spot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  
+  #Set up the M Matrix to denote replicates
+  nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
+  nrLigandWells <- length(unique(srDT$Ligand[srDT$SignalType=="Signal"]))-nrControlWells
+  M <-matrix(0, nrow = length(unique(srDT$BWL[srDT$SignalType=="Signal"])), ncol = nrLigandWells+1)
+  rownames(M) <- unique(srDT$BWL[srDT$SignalType=="Signal"])
+  #Indicate the control wells in the last column
+  Mc <- M[grepl("FBS",rownames(M)),]
+  Mc[,ncol(Mc)] <-1L
+  #Subset to the ligand wells and mark as non-replicate
+  Ml <- M[!grepl("FBS",rownames(M)),]
+  #Name the rows by their ligand names, removing barcode and well
+  MlBWLNames <- rownames(Ml)
+  rownames(Ml) <- sub(".*?_","",sub(".*?_","",rownames(Ml)))
+  #Name the columns a unique ligand + FBS
+  colnames(Ml)<- c(unique(rownames(Ml)),"FBS")
+  MlList <- lapply(colnames(Ml),function(cn,Ml){
+    #Take the ligand M matrix and put a 1 where the rowname==colname
+    Ml[rownames(Ml)==cn,colnames(Ml)==cn] <- 1
+    return(Ml[,colnames(Ml)==cn])
+  },Ml=Ml)
+  Ml <- do.call(cbind, MlList)
+  #Restore the row names ot the full BWL values
+  rownames(Ml)<- MlBWLNames
+  #Add the replicate wells and restore the row order
+  M <- rbind(Mc,Ml)
+  M <- M[order(rownames(M)),]
+  
+  srmList <- lapply(signalNames, function(signalName, dt){
+    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "SRC", "SignalType", signalName)])
+    return(srm)
+  },dt=srDT)
+  
+  names(srmList) <- signalNames
+  
+  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
+    Y <- srmList[[srmName]]
+    #Hardcode in identification of residuals as the controls
+    resStart <- ncol(Y)/2+1
+    cIdx=resStart:ncol(Y)
+    nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName) #Normalize the spot level data
+    nY$k <- k
+    nY$SignalName <- paste0(srmName,"RUV3")
+    setnames(nY,srmName,paste0(srmName,"RUV3"))
+    return(nY)
+  }, srmList=srmList, M=M, k=k)
+  
+  #Reannotate with ECMp and MEP
+  ECMpDT <- unique(srDT[,list(Well,Spot,ECMp)])
+  
+  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
+    setkey(dt,Well,Spot)
+    setkey(ECMpDT,Well,Spot)
+    dtECMpDT <- merge(dt,ECMpDT)
+    dtECMpDT$MEP <- paste(dtECMpDT$ECMp,dtECMpDT$Ligand,sep="_")
+    return(dtECMpDT)
+  },ECMpDT=ECMpDT)
+  
+  
+  #Add Loess normalized values for each signal
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
+    dtRUV3Loess <- loessNormArray(dt)
+  })
+  
+  #Combine the normalized signal into one data.table
+  #with one set of metadata
+  signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
+    sdt <- dt[,grep("_CP_|_PA_",colnames(dt)), with=FALSE]
+  }))
+  
+  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
+  signalMetadataDT <- signalMetadataDT[,mel := NULL]
+  signalMetadataDT <- signalMetadataDT[,Residual := NULL]
+  
+  #Merge the raw signal back into the dataset
+  #signalMetadataDT <- merge(signalMetadataDT,dtn,by=c("Barcode","Well","Spot","ArrayRow","ArrayColumn","ECMp","Ligand"))
+  
   return(signalMetadataDT)
 }
