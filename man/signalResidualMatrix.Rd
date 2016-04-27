@@ -7,12 +7,12 @@
 signalResidualMatrix(dt)
 }
 \arguments{
-\item{dt}{a data.table with columns named BWL, SERC, SignalType and a column 
+\item{dt}{a data.table with columns named BWL, SRC, SignalType and a column 
 named by the unique value in the SignalType column.}
 }
 \value{
 A numeric matrix with BWL rows and two sets of SERC columns. The second
-set of SERC columns are the residuals from the medians of each column and have
+set of SRC columns are the residuals from the medians of each column and have
 "_Rel" appended to their names.
 }
 \description{
