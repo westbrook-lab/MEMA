@@ -315,7 +315,7 @@ logIntensities <- function(dt){
 #' @export
 boundedLog2 <- function(x){
   #use the smallest non zero value as the minimum
-  xMin <- min(x)
+  xMin <- min(x, na.rm=TRUE)
   if (xMin==0) xMin <- unique(x[order(x)])[2]
   x[x==0]<- xMin
   xLog2 <- log2(x)

@@ -25,11 +25,11 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   if(!is.null(seNames)){
     seNamesPattern<-paste(seNames,collapse="|")
     seNames <- grep(seNamesPattern,parameterNames,value=TRUE)
-    slDTse <- slDT[,lapply(.SD,se), by="Barcode,Well,Spot", .SDcols=seNames]
+    slDTse <- cDT[,lapply(.SD,se), by="Barcode,Well,Spot", .SDcols=seNames]
   } else{
-    slDTse <- slDT[,lapply(.SD,se), by="Barcode,Well,Spot"]
+    slDTse <- cDT[,lapply(.SD,se), by="Barcode,Well,Spot"]
   }
- 
+  
   #Add _SE to the standard error column names
   setnames(slDTse, grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE),"_SE"))
   
@@ -49,6 +49,7 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   
   #Add well level QA Scores to spot level data
   slDT <- slDT[,QAScore := calcQAScore(.SD, threshold=lthresh, maxNrSpot = max(cDT$ArrayRow)*max(cDT$ArrayColumn),value="Spot_PA_LoessSCC"),by="Barcode,Well"]
+  return(slDT)
 }
 
 
@@ -77,10 +78,10 @@ createl4 <- function(l3, seNames=NULL){
   } else{
     l4DTse <- l4Keep[,lapply(.SD,se),keyby="Ligand,ECMp,Barcode"]
   }
-
+  
   #Add _SE to the standard error column names
   setnames(l4DTse, grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE),"_SE"))
-
+  
   l3Names <- grep("Barcode|Well|CellLine|Ligand|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP", colnames(l3), value=TRUE)
   #Merge back in the replicate metadata
   mDT <- l3[,l3Names,keyby="Ligand,ECMp,Barcode", with=FALSE]

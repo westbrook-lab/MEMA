@@ -198,10 +198,10 @@ normRUV3LoessResiduals <- function(dt, k){
   #Combine the normalized signal into one data.table
   #with one set of metadata
   signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
-    sdt <- dt[,grep("_CP_|_PA_",colnames(dt)), with=FALSE]
+    sdt <- dt[,grep("_CP_|_PA_|Cells|Reference",colnames(dt)), with=FALSE]
   }))
   
-  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
   signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
   signalMetadataDT <- signalMetadataDT[,mel := NULL]
   signalMetadataDT <- signalMetadataDT[,Residual := NULL]
@@ -287,8 +287,8 @@ signalResidualMatrix <- function(dt){
     fill <- 0
   }
 
-  dts <- dcast(dt[dt$SignalType=="Signal",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE)
-  dtr <- dcast(dt[dt$SignalType=="Residual",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE)
+  dts <- data.table(dcast(dt[dt$SignalType=="Signal",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
+  dtr <- data.table(dcast(dt[dt$SignalType=="Residual",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
   rowNames <- dts$BWL
   dts <- dts[,BWL := NULL]
   dtr <- dtr[,BWL:=NULL]
