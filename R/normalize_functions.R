@@ -165,7 +165,6 @@ normRUV3LoessResiduals <- function(dt, k){
   },dt=srDT)
   names(srmList) <- signalNames
   
-  
   srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
     Y <- srmList[[srmName]]
     #Hardcode in identification of residuals as the controls
@@ -175,6 +174,7 @@ normRUV3LoessResiduals <- function(dt, k){
     nY$k <- k
     nY$SignalName <- paste0(srmName,"RUV3")
     setnames(nY,srmName,paste0(srmName,"RUV3"))
+    nY[[srmName]] <- as.vector(Y[,1:(resStart-1)])
     return(nY)
   }, srmList=srmList, M=M, k=k)
   
@@ -190,9 +190,15 @@ normRUV3LoessResiduals <- function(dt, k){
   },ECMpDT=ECMpDT)
   
   
-  #Add Loess normalized values for each signal
+  #Add Loess normalized values for each RUV3 normalized signal
   RUV3LoessList <- lapply(srmERUV3List, function(dt){
     dtRUV3Loess <- loessNormArray(dt)
+  })
+  
+  #Add Loess normalized values for each Raw signal
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
+    dt$SignalName <- sub("RUV3","",dt$SignalName)
+    dtLoess <- loessNormArray(dt)
   })
   
   #Combine the normalized signal into one data.table
