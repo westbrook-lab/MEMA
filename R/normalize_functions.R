@@ -118,6 +118,104 @@ normRZSDataset <- function(dt){
 
 #'Apply RUV3 and Loess Normalization to the signals in a dataset
 #' @export
+normRUV3LoessResidualsDisplay <- function(dt, k){
+  setkey(dt,Barcode,Well,Ligand,ECMp)
+  metadataNames <- "Barcode|Well|^Spot$|^PrintSpot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
+  signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
+  
+  #Add residuals from subtracting the biological medians from each value
+  residuals <- dt[,lapply(.SD,calcResidual), by="Barcode,Well,Ligand,ECMp", .SDcols=signalNames]
+  #Add within array location metadata
+  residuals$Spot <- as.integer(dt$Spot)
+  residuals$PrintSpot <- as.integer(dt$PrintSpot)
+  residuals$ArrayRow <- dt$ArrayRow
+  residuals$ArrayColumn <- dt$ArrayColumn
+  #Create a signal type
+  dt$SignalType <- "Signal"
+  residuals$SignalType <- "Residual"
+  srDT <- rbind(dt,residuals)
+  
+  #Add to carry metadata into matrices
+  srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
+  #srDT$SERC <- paste(srDT$Spot,srDT$ECMp, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  #srDT$SRC <- paste(srDT$Spot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  #srDT$WsRC <- paste(srDT$PrintSpot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
+  
+  
+  #Set up the M Matrix to denote replicates
+  nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
+  nrLigandWells <- length(unique(srDT$BWL[srDT$SignalType=="Signal"]))-nrControlWells
+  M <-matrix(0, nrow = length(unique(srDT$BWL[srDT$SignalType=="Signal"])), ncol = nrLigandWells+1)
+  rownames(M) <- unique(srDT$BWL[srDT$SignalType=="Signal"])
+  #Indicate the control wells in the last column
+  Mc <- M[grepl("FBS",rownames(M)),]
+  Mc[,ncol(Mc)] <-1L
+  #Subset to the ligand wells and mark as non-replicate
+  Ml <- M[!grepl("FBS",rownames(M)),]
+  for(i in 1:nrLigandWells) {
+    Ml[i,i] <- 1
+  }
+  #Add the replicate wells and restore the row order
+  M <- rbind(Mc,Ml)
+  M <- M[order(rownames(M)),]
+  
+  srmList <- lapply(signalNames, function(signalName, dt){
+    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
+    return(srm)
+  },dt=srDT)
+  names(srmList) <- signalNames
+  
+  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
+    Y <- srmList[[srmName]]
+    #Hardcode in identification of residuals as the controls
+    resStart <- ncol(Y)/2+1
+    cIdx=resStart:ncol(Y)
+    nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName, verboseDisplay = TRUE)[["nYm"]] #Normalize the spot level data
+    nY$k <- k
+    nY$SignalName <- paste0(srmName,"RUV3")
+    setnames(nY,srmName,paste0(srmName,"RUV3"))
+    nY[[srmName]] <- as.vector(Y[,1:(resStart-1)])
+    return(nY)
+  }, srmList=srmList, M=M, k=k)
+  
+  #Reannotate with ECMp, MEP, ArrayRow and ArrayColumn
+  ECMpDT <- unique(srDT[,list(Well,PrintSpot,Spot,ECMp,ArrayRow,ArrayColumn)])
+  
+  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
+    setkey(dt,Well,PrintSpot)
+    setkey(ECMpDT,Well,PrintSpot)
+    dtECMpDT <- merge(dt,ECMpDT)
+    dtECMpDT$MEP <- paste(dtECMpDT$ECMp,dtECMpDT$Ligand,sep="_")
+    return(dtECMpDT)
+  },ECMpDT=ECMpDT)
+  
+  
+  #Add Loess normalized values for each RUV3 normalized signal
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
+    dtRUV3Loess <- loessNormArray(dt)
+  })
+  
+  #Add Loess normalized values for each Raw signal
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
+    dt$SignalName <- sub("RUV3","",dt$SignalName)
+    dtLoess <- loessNormArray(dt)
+  })
+  
+  #Combine the normalized signal into one data.table
+  #with one set of metadata
+  signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
+    sdt <- dt[,grep("_CP_|_PA_|Cells|Reference",colnames(dt)), with=FALSE]
+  }))
+  
+  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
+  signalMetadataDT <- signalMetadataDT[,mel := NULL]
+  signalMetadataDT <- signalMetadataDT[,Residual := NULL]
+  return(signalMetadataDT)
+}
+
+#'Apply RUV3 and Loess Normalization to the signals in a dataset
+#' @export
 normRUV3LoessResiduals <- function(dt, k){
   setkey(dt,Barcode,Well,Ligand,ECMp)
   metadataNames <- "Barcode|Well|^Spot$|^PrintSpot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
@@ -214,6 +312,7 @@ normRUV3LoessResiduals <- function(dt, k){
   return(signalMetadataDT)
 }
 
+
 #' Loess normalize an array using the spatial residuals
 loessNorm <- function(Value,Residual,ArrayRow,ArrayColumn){
   dt <-data.table(Value=Value,Residual=Residual,ArrayRow=ArrayRow,ArrayColumn=ArrayColumn)
@@ -253,8 +352,9 @@ calcResidual <- function(x){
 #' Assumes there are signal values in the first half of each row
 #' and residuals in the second half
 #' @export
-RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName){
-  nY <- RUVIII(Y, M, cIdx, k)[["newY"]]
+RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName, verboseDisplay=FALSE){
+  YRUVIII <- RUVIII(Y, M, cIdx, k)
+  nY <- YRUVIII[["newY"]]
   #Remove residuals
   nY <- nY[,1:(ncol(nY)/2)]
   #melt matrix to have Spot and Ligand columns
@@ -265,11 +365,9 @@ RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName){
   nYm$Barcode <- splits[,1]
   nYm$Well <- splits[,2]
   nYm$Ligand <- sub(".*?_","",sub(".*?_","",nYm$BWL))
-  #splits <- limma::strsplit2(nYm$SRC,split = "_")
-  #nYm$Spot <- as.integer(splits[,1])
-  #nYm$ECMp <- splits[,2]
-  #nYm$ArrayRow <- as.integer(splits[,2])
-  #nYm$ArrayColumn <- as.integer(splits[,3])
+  if(verboseDisplay){
+    return(list(nYm=data.table(nYm), fullAlpha=YRUVIII[["fullalpha"]], W=RUVIII[["W"]]))
+  }
   return(data.table(nYm))
 }
 
@@ -324,13 +422,14 @@ RUVIII = function(Y, M, ctl, k=NULL, eta=NULL, average=FALSE, fullalpha=NULL)
     m = nrow(Y)
     Y0 = residop(Y,M)
     fullalpha = t(svd(Y0%*%t(Y0))$u[,1:(m-ncol(M)),drop=FALSE])%*%Y
+    k<-min(k,nrow(fullalpha))
     alpha = fullalpha[1:k,,drop=FALSE]
     ac = alpha[,ctl,drop=FALSE]
     W = Y[,ctl]%*%t(ac)%*%solve(ac%*%t(ac))
     newY = Y - W%*%alpha
   }
   if (average) newY = ((1/apply(M,2,sum))*t(M)) %*% newY
-  return(list(newY = newY, fullalpha=fullalpha))
+  return(list(newY = newY, fullalpha=fullalpha, W=W))
 }
 
 #' Apply the RUV3 algortihm 

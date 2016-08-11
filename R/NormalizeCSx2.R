@@ -22,7 +22,7 @@ normRUV3LoessResidualsCS <- function(dt, k){
   #srDT$SRC <- paste(srDT$Spot, srDT$ArrayRow, srDT$ArrayColumn, sep="_")
   
   #Set up the M Matrix to denote replicates
-  nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
+  nrControlWells <- sum(grepl("FBS",unique(srDT$Ligand)))
   nrLigandWells <- length(unique(srDT$Ligand[srDT$SignalType=="Signal"]))-nrControlWells
   M <-matrix(0, nrow = length(unique(srDT$BWL[srDT$SignalType=="Signal"])), ncol = nrLigandWells+1)
   rownames(M) <- unique(srDT$BWL[srDT$SignalType=="Signal"])
@@ -55,7 +55,7 @@ normRUV3LoessResidualsCS <- function(dt, k){
   
   names(srmList) <- signalNames
   
-  srmRUV3List <- mclapply(names(srmList), function(srmName, srmList, M, k){
+  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
     Y <- srmList[[srmName]]
     #Hardcode in identification of residuals as the controls
     resStart <- ncol(Y)/2+1
@@ -65,24 +65,24 @@ normRUV3LoessResidualsCS <- function(dt, k){
     nY$SignalName <- paste0(srmName,"RUV3")
     setnames(nY,srmName,paste0(srmName,"RUV3"))
     return(nY)
-  }, srmList=srmList, M=M, k=k, mc.cores=detectCores())
+  }, srmList=srmList, M=M, k=k)
   
   #Reannotate with ECMp and MEP
   ECMpDT <- unique(srDT[,list(Well,PrintSpot,Spot,ECMp,ArrayRow,ArrayColumn)])
   
-  srmERUV3List <- mclapply(srmRUV3List, function(dt,ECMpDT){
+  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
     setkey(dt,Well,PrintSpot)
     setkey(ECMpDT,Well,PrintSpot)
     dtECMpDT <- merge(dt,ECMpDT)
     dtECMpDT$MEP <- paste(dtECMpDT$ECMp,dtECMpDT$Ligand,sep="_")
     return(dtECMpDT)
-  },ECMpDT=ECMpDT, mc.cores=detectCores())
+  },ECMpDT=ECMpDT)
   
   
   #Add Loess normalized values for each signal
-  RUV3LoessList <- mclapply(srmERUV3List, function(dt){
+  RUV3LoessList <- lapply(srmERUV3List, function(dt){
     dtRUV3Loess <- loessNormArray(dt)
-  },mc.cores=detectCores())
+  })
   
   #Combine the normalized signal into one data.table
   #with one set of metadata

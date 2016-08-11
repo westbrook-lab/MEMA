@@ -34,7 +34,7 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   setnames(slDTse, grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE),"_SE"))
   
   #Merge back in the spot and well metadata
-  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Endpoint|ECMp|MEP|Well_Ligand|ImageID|Barcode|^Well$|^PrintSpot$|^Spot$)", x=colnames(cDT), value=TRUE)
+  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Endpoint|ECMp|MEP|Well_Ligand|ECM|ImageID|Barcode|^Well$|^PrintSpot$|^Spot$)", x=colnames(cDT), value=TRUE)
   setkey(cDT,Barcode, Well,Spot)
   mDT <- cDT[,metadataNames,keyby="Barcode,Well,Spot", with=FALSE]
   slDT <- mDT[slDT, mult="first"]
@@ -52,6 +52,40 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   return(slDT)
 }
 
+
+
+numericMedianUniqueMetadata<-function(x){
+  if(is.numeric(x)){
+    as.numeric(median(x))
+  } else {
+    if(!length(unique(x))==1){
+      return(NA)
+    } else{
+      unique(x)
+    }
+  }
+}
+
+#' @export
+summarizeFBS <- function(dt){
+  #Summarize all by ligand and ECMp
+  #This will only change the FBS data
+  dtFBS <- dt[grepl("FBS",dt$Ligand),]
+  #Remove anything after FBS
+  dtFBS$Ligand <- gsub("FBS.*","FBS", dtFBS$Ligand)
+  if("StainingSet" %in% colnames(dtFBS)){
+    #Find the medians or the unique metadata values
+    dtFBSMedians <- dtFBS[, lapply(.SD, numericMedianUniqueMetadata), keyby = "Ligand,ECMp,StainingSet"]
+  } else {
+    #Find the medians or the unique metadata values
+    dtFBSMedians <- dtFBS[, lapply(.SD, numericMedianUniqueMetadata), keyby = "Ligand,ECMp"]
+  }
+  #Delete the FBS wells from the original dt
+  dt <- dt[!grepl("FBS",dt$Ligand),]
+  #Bind in the summarized FBS values
+  dt <- rbind(dt,dtFBSMedians)
+  return(dt)
+}
 
 #' Summarize spot level data to the MEP level
 #' 
@@ -82,12 +116,13 @@ createl4 <- function(l3, seNames=NULL){
   #Add _SE to the standard error column names
   setnames(l4DTse, grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE),"_SE"))
   
-  l3Names <- grep("Barcode|Well|CellLine|Ligand|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP", colnames(l3), value=TRUE)
+  l3Names <- grep("Barcode|Well|CellLine|Ligand|ECM|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP", colnames(l3), value=TRUE)
   #Merge back in the replicate metadata
   mDT <- l3[,l3Names,keyby="Ligand,ECMp,Barcode", with=FALSE]
   setkey(mDT,Ligand,ECMp,Barcode)
   l4DT <- mDT[l4DT, mult="first"]
   l4DT <- l4DTse[l4DT]
-  
+  l4DT <- summarizeFBS(l4DT)
   return(l4DT)
 }#End of createl4
+

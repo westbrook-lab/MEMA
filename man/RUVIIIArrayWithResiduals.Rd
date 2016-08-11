@@ -4,7 +4,7 @@
 \alias{RUVIIIArrayWithResiduals}
 \title{Apply RUV3 normalization on a signal and its residuals}
 \usage{
-RUVIIIArrayWithResiduals(k, Y, M, cIdx, signalName)
+RUVIIIArrayWithResiduals(k, Y, M, cIdx, signalName, verboseDisplay = FALSE)
 }
 \description{
 Assumes there are signal values in the first half of each row
