@@ -2,7 +2,7 @@
 % Please edit documentation in R/normalize_functions.R
 \name{RUVIII}
 \alias{RUVIII}
-\title{Perform RUV3 removal of unwanted variations
+\title{Perform RUV removal of unwanted variations
 This function is written by Johann Gagnon-Bartsch and will become part of the
 ruv package.}
 \usage{
@@ -10,7 +10,7 @@ RUVIII(Y, M, ctl, k = NULL, eta = NULL, average = FALSE,
   fullalpha = NULL)
 }
 \description{
-Perform RUV3 removal of unwanted variations
+Perform RUV removal of unwanted variations
 This function is written by Johann Gagnon-Bartsch and will become part of the
 ruv package.
 }

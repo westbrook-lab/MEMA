@@ -2,7 +2,7 @@
 % Please edit documentation in R/normalize_functions.R
 \name{RUVIIIArrayWithResiduals}
 \alias{RUVIIIArrayWithResiduals}
-\title{Apply RUV3 normalization on a signal and its residuals}
+\title{Apply RUV normalization on a signal and its residuals}
 \usage{
 RUVIIIArrayWithResiduals(k, Y, M, cIdx, signalName, verboseDisplay = FALSE)
 }

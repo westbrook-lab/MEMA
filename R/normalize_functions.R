@@ -116,9 +116,9 @@ normRZSDataset <- function(dt){
   return(parmNormedList[[length(parmNormedList)]])
 }
 
-#'Apply RUV3 and Loess Normalization to the signals in a dataset
+#'Apply RUV and Loess Normalization to the signals in a dataset
 #' @export
-normRUV3LoessResidualsDisplay <- function(dt, k){
+normRUVLoessResidualsDisplay <- function(dt, k){
   setkey(dt,Barcode,Well,Ligand,ECMp)
   metadataNames <- "Barcode|Well|^Spot$|^PrintSpot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
   signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
@@ -165,15 +165,15 @@ normRUV3LoessResidualsDisplay <- function(dt, k){
   },dt=srDT)
   names(srmList) <- signalNames
   
-  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
+  srmRUVList <- lapply(names(srmList), function(srmName, srmList, M, k){
     Y <- srmList[[srmName]]
     #Hardcode in identification of residuals as the controls
     resStart <- ncol(Y)/2+1
     cIdx=resStart:ncol(Y)
     nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName, verboseDisplay = TRUE)[["nYm"]] #Normalize the spot level data
     nY$k <- k
-    nY$SignalName <- paste0(srmName,"RUV3")
-    setnames(nY,srmName,paste0(srmName,"RUV3"))
+    nY$SignalName <- paste0(srmName,"RUV")
+    setnames(nY,srmName,paste0(srmName,"RUV"))
     nY[[srmName]] <- as.vector(Y[,1:(resStart-1)])
     return(nY)
   }, srmList=srmList, M=M, k=k)
@@ -181,7 +181,7 @@ normRUV3LoessResidualsDisplay <- function(dt, k){
   #Reannotate with ECMp, MEP, ArrayRow and ArrayColumn
   ECMpDT <- unique(srDT[,list(Well,PrintSpot,Spot,ECMp,ArrayRow,ArrayColumn)])
   
-  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
+  srmERUVList <- lapply(srmRUVList, function(dt,ECMpDT){
     setkey(dt,Well,PrintSpot)
     setkey(ECMpDT,Well,PrintSpot)
     dtECMpDT <- merge(dt,ECMpDT)
@@ -190,33 +190,33 @@ normRUV3LoessResidualsDisplay <- function(dt, k){
   },ECMpDT=ECMpDT)
   
   
-  #Add Loess normalized values for each RUV3 normalized signal
-  RUV3LoessList <- lapply(srmERUV3List, function(dt){
-    dtRUV3Loess <- loessNormArray(dt)
+  #Add Loess normalized values for each RUV normalized signal
+  RUVLoessList <- lapply(srmERUVList, function(dt){
+    dtRUVLoess <- loessNormArray(dt)
   })
   
   #Add Loess normalized values for each Raw signal
-  RUV3LoessList <- lapply(srmERUV3List, function(dt){
-    dt$SignalName <- sub("RUV3","",dt$SignalName)
+  RUVLoessList <- lapply(srmERUVList, function(dt){
+    dt$SignalName <- sub("RUV","",dt$SignalName)
     dtLoess <- loessNormArray(dt)
   })
   
   #Combine the normalized signal into one data.table
   #with one set of metadata
-  signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
+  signalDT <- do.call(cbind,lapply(RUVLoessList, function(dt){
     sdt <- dt[,grep("_CP_|_PA_|Cells|Reference",colnames(dt)), with=FALSE]
   }))
   
-  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- cbind(RUVLoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUVLoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
   signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
   signalMetadataDT <- signalMetadataDT[,mel := NULL]
   signalMetadataDT <- signalMetadataDT[,Residual := NULL]
   return(signalMetadataDT)
 }
 
-#'Apply RUV3 and Loess Normalization to the signals in a dataset
+#'Apply RUV and Loess Normalization to the signals in a dataset
 #' @export
-normRUV3LoessResiduals <- function(dt, k){
+normRUVLoessResiduals <- function(dt, k){
   setkey(dt,Barcode,Well,Ligand,ECMp)
   metadataNames <- "Barcode|Well|^Spot$|^PrintSpot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
   signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
@@ -263,15 +263,15 @@ normRUV3LoessResiduals <- function(dt, k){
   },dt=srDT)
   names(srmList) <- signalNames
   
-  srmRUV3List <- lapply(names(srmList), function(srmName, srmList, M, k){
+  srmRUVList <- lapply(names(srmList), function(srmName, srmList, M, k){
     Y <- srmList[[srmName]]
     #Hardcode in identification of residuals as the controls
     resStart <- ncol(Y)/2+1
     cIdx=resStart:ncol(Y)
     nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName) #Normalize the spot level data
     nY$k <- k
-    nY$SignalName <- paste0(srmName,"RUV3")
-    setnames(nY,srmName,paste0(srmName,"RUV3"))
+    nY$SignalName <- paste0(srmName,"RUV")
+    setnames(nY,srmName,paste0(srmName,"RUV"))
     nY[[srmName]] <- as.vector(Y[,1:(resStart-1)])
     return(nY)
   }, srmList=srmList, M=M, k=k)
@@ -279,7 +279,7 @@ normRUV3LoessResiduals <- function(dt, k){
   #Reannotate with ECMp, MEP, ArrayRow and ArrayColumn
   ECMpDT <- unique(srDT[,list(Well,PrintSpot,Spot,ECMp,ArrayRow,ArrayColumn)])
   
-  srmERUV3List <- lapply(srmRUV3List, function(dt,ECMpDT){
+  srmERUVList <- lapply(srmRUVList, function(dt,ECMpDT){
     setkey(dt,Well,PrintSpot)
     setkey(ECMpDT,Well,PrintSpot)
     dtECMpDT <- merge(dt,ECMpDT)
@@ -288,24 +288,24 @@ normRUV3LoessResiduals <- function(dt, k){
   },ECMpDT=ECMpDT)
   
   
-  #Add Loess normalized values for each RUV3 normalized signal
-  RUV3LoessList <- lapply(srmERUV3List, function(dt){
-    dtRUV3Loess <- loessNormArray(dt)
+  #Add Loess normalized values for each RUV normalized signal
+  RUVLoessList <- lapply(srmERUVList, function(dt){
+    dtRUVLoess <- loessNormArray(dt)
   })
   
   #Add Loess normalized values for each Raw signal
-  RUV3LoessList <- lapply(srmERUV3List, function(dt){
-    dt$SignalName <- sub("RUV3","",dt$SignalName)
+  RUVLoessList <- lapply(srmERUVList, function(dt){
+    dt$SignalName <- sub("RUV","",dt$SignalName)
     dtLoess <- loessNormArray(dt)
   })
   
   #Combine the normalized signal into one data.table
   #with one set of metadata
-  signalDT <- do.call(cbind,lapply(RUV3LoessList, function(dt){
+  signalDT <- do.call(cbind,lapply(RUVLoessList, function(dt){
     sdt <- dt[,grep("_CP_|_PA_|Cells|Reference",colnames(dt)), with=FALSE]
   }))
   
-  signalMetadataDT <- cbind(RUV3LoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUV3LoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
+  signalMetadataDT <- cbind(RUVLoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUVLoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
   signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
   signalMetadataDT <- signalMetadataDT[,mel := NULL]
   signalMetadataDT <- signalMetadataDT[,Residual := NULL]
@@ -347,7 +347,7 @@ calcResidual <- function(x){
   return(x-mel)
 }
 
-#' Apply RUV3 normalization on a signal and its residuals
+#' Apply RUV normalization on a signal and its residuals
 #' 
 #' Assumes there are signal values in the first half of each row
 #' and residuals in the second half
@@ -374,7 +374,7 @@ RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName, verboseDisplay=F
 #' Generate a matrix of signals and residuals
 #' 
 #' This function reorganizes a data.table into a matrix suitable for
-#' RUV3 normalization.
+#' RUV normalization.
 #' 
 #'@param dt a data.table with columns named BWL, SRC, SignalType and a column 
 #' named by the unique value in the SignalType column.
@@ -404,7 +404,7 @@ signalResidualMatrix <- function(dt){
   return(srm)
 }
 
-#' Perform RUV3 removal of unwanted variations
+#' Perform RUV removal of unwanted variations
 #' This function is written by Johann Gagnon-Bartsch and will become part of the
 #' ruv package.
 RUVIII = function(Y, M, ctl, k=NULL, eta=NULL, average=FALSE, fullalpha=NULL)
@@ -432,8 +432,8 @@ RUVIII = function(Y, M, ctl, k=NULL, eta=NULL, average=FALSE, fullalpha=NULL)
   return(list(newY = newY, fullalpha=fullalpha, W=W))
 }
 
-#' Apply the RUV3 algortihm 
-normRUV3Dataset <- function(dt, k){
+#' Apply the RUV algortihm 
+normRUVDataset <- function(dt, k){
   #browser()
   #Setup data with plate as the unit
   #There are 694 negative controls and all plates are replicates

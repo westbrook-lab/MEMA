@@ -17,6 +17,6 @@ set of SRC columns are the residuals from the medians of each column and have
 }
 \description{
 This function reorganizes a data.table into a matrix suitable for
-RUV3 normalization.
+RUV normalization.
 }
 
