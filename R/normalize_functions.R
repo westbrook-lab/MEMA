@@ -88,10 +88,10 @@ normRZSWellsWithinPlate <- function(DT, value, baseECM, baseL) {
   if(!"ECMp" %in% colnames(DT)) stop (paste("DT must contain an ECMp column."))
   if(!"Ligand" %in% colnames(DT)) stop (paste("DT must contain a Ligand column."))
   if(!c(value) %in% colnames(DT)) stop(paste("DT must contain a", value, "column."))
-
+  
   valueMedian <- median(unlist(DT[(grepl(baseECM, DT$ECMp) & grepl(baseL,DT$Ligand)), value, with=FALSE]), na.rm = TRUE)
   if (is.na(valueMedian)) stop(paste("Normalization calculated an NA median for",value, baseECM, baseL))
-
+  
   valueMAD <- mad(unlist(DT[(grepl(baseECM, DT$ECMp)  & grepl(baseL,DT$Ligand)),value, with=FALSE]), na.rm = TRUE)
   #Correct for 0 MAD values
   valueMAD <- valueMAD+.01
@@ -257,12 +257,14 @@ normRUVLoessResiduals <- function(dt, k){
   M <- rbind(Mc,Ml)
   M <- M[order(rownames(M)),]
   
+  #Make a list of matrices that hold signal and residual values
   srmList <- lapply(signalNames, function(signalName, dt){
     srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
     return(srm)
   },dt=srDT)
   names(srmList) <- signalNames
   
+  #Make a list of matrices of RUV normalized signal values
   srmRUVList <- lapply(names(srmList), function(srmName, srmList, M, k){
     Y <- srmList[[srmName]]
     #Hardcode in identification of residuals as the controls
@@ -293,11 +295,11 @@ normRUVLoessResiduals <- function(dt, k){
     dtRUVLoess <- loessNormArray(dt)
   })
   
-  #Add Loess normalized values for each Raw signal
-  RUVLoessList <- lapply(srmERUVList, function(dt){
-    dt$SignalName <- sub("RUV","",dt$SignalName)
-    dtLoess <- loessNormArray(dt)
-  })
+  # #Add Loess normalized values for each Raw signal
+  # RUVLoessList <- lapply(srmERUVList, function(dt){
+  #   dt$SignalName <- sub("RUV","",dt$SignalName)
+  #   dtLoess <- loessNormArray(dt)
+  # })
   
   #Combine the normalized signal into one data.table
   #with one set of metadata
@@ -305,6 +307,7 @@ normRUVLoessResiduals <- function(dt, k){
     sdt <- dt[,grep("_CP_|_PA_|Cells|Reference",colnames(dt)), with=FALSE]
   }))
   
+  signalDT <- signalDT[,grep("RUV$",colnames(signalDT),invert=TRUE,value=TRUE), with=FALSE] 
   signalMetadataDT <- cbind(RUVLoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUVLoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
   signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
   signalMetadataDT <- signalMetadataDT[,mel := NULL]
@@ -390,7 +393,7 @@ signalResidualMatrix <- function(dt){
   } else {
     fill <- 0
   }
-
+  
   dts <- data.table(dcast(dt[dt$SignalType=="Signal",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
   dtr <- data.table(dcast(dt[dt$SignalType=="Residual",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
   rowNames <- dts$BWL

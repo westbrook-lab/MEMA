@@ -99,7 +99,7 @@ summarizeFBS <- function(dt){
 createl4 <- function(l3, seNames=NULL){
   #Add a count of replicates
   l3 <- l3[,Spot_PA_ReplicateCount := .N,by="Ligand,ECMp"]
-  l4Names<-grep("Loess$|RUV|Norm|^Ligand|^ECMp|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
+  l4Names<-grep("Loess$|RUV|Norm|^Ligand$|^ECMp|Barcode|Spot_PA_SpotCellCount$|Spot_PA_ReplicateCount$", x=names(l3),value=TRUE)
   #remove the _SE values
   l4Names <- grep("_SE|NormMethod|AnnotID",l4Names, value = TRUE, invert = TRUE)
   l4Keep<-l3[,l4Names,with=FALSE]
