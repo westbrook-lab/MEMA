@@ -34,7 +34,7 @@ createl3 <- function(cDT, lthresh = lthresh, seNames=NULL){
   setnames(slDTse, grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE),"_SE"))
   
   #Merge back in the spot and well metadata
-  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Endpoint|ECMp|MEP|Well_Ligand|ECM|ImageID|Barcode|^Well$|^PrintSpot$|^Spot$)", x=colnames(cDT), value=TRUE)
+  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Endpoint|ECMp|MEP|Well_Ligand|ECM|ImageID|Barcode|^Well$|^PrintSpot$|^Spot$|Pin|Lx)", x=colnames(cDT), value=TRUE)
   setkey(cDT,Barcode, Well,Spot)
   mDT <- cDT[,metadataNames,keyby="Barcode,Well,Spot", with=FALSE]
   slDT <- mDT[slDT, mult="first"]
@@ -73,6 +73,8 @@ summarizeFBS <- function(dt){
   dtFBS <- dt[grepl("FBS",dt$Ligand),]
   #Remove anything after FBS
   dtFBS$Ligand <- gsub("FBS.*","FBS", dtFBS$Ligand)
+  #Create the new MEP name
+  dtFBS$MEP <- paste(dtFBS$ECMp,dtFBS$Ligand,sep="_")
   if("StainingSet" %in% colnames(dtFBS)){
     #Find the medians or the unique metadata values
     dtFBSMedians <- dtFBS[, lapply(.SD, numericMedianUniqueMetadata), keyby = "Ligand,ECMp,StainingSet"]
@@ -80,6 +82,9 @@ summarizeFBS <- function(dt){
     #Find the medians or the unique metadata values
     dtFBSMedians <- dtFBS[, lapply(.SD, numericMedianUniqueMetadata), keyby = "Ligand,ECMp"]
   }
+  #If the FBS is from multiple plates its barcode has been reset to NA.
+  #replace this with the word Multiple
+  dtFBSMedians$Barcode[is.na(dtFBSMedians$Barcode)] <- "Multiple"
   #Delete the FBS wells from the original dt
   dt <- dt[!grepl("FBS",dt$Ligand),]
   #Bind in the summarized FBS values
@@ -116,7 +121,7 @@ createl4 <- function(l3, seNames=NULL){
   #Add _SE to the standard error column names
   setnames(l4DTse, grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE),"_SE"))
   
-  l3Names <- grep("Barcode|Well|CellLine|Ligand|ECM|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP", colnames(l3), value=TRUE)
+  l3Names <- grep("Barcode|Well|CellLine|Ligand|ECM|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP|Lx", colnames(l3), value=TRUE)
   #Merge back in the replicate metadata
   mDT <- l3[,l3Names,keyby="Ligand,ECMp,Barcode", with=FALSE]
   setkey(mDT,Ligand,ECMp,Barcode)

@@ -183,7 +183,7 @@ kmeansDNACluster <- function (x, centers = 2)
 #'
 #'@export
 kmeansCluster <- function(x,value,ctrlLigand="HighSerum"){
-  ctrlClusters <- kmeansClusterValue(log2(x[[value]][grepl(ctrlLigand,x$Ligand)]))
+  ctrlClusters <- kmeansClusterValue(log2(1+x[[value]][grepl(ctrlLigand,x$Ligand)]))
   ctrlPositiveThresh <- min(x[[value]][grepl(ctrlLigand,x$Ligand)][ctrlClusters==2])
   clusters <- rep.int(0,nrow(x))
   clusters[x[[value]]>ctrlPositiveThresh] <- 1
