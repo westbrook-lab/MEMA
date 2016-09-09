@@ -121,7 +121,7 @@ createl4 <- function(l3, seNames=NULL){
   #Add _SE to the standard error column names
   setnames(l4DTse, grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$|Ligand|ECMp",colnames(l4DTse), value = TRUE, invert = TRUE),"_SE"))
   
-  l3Names <- grep("Barcode|Well|CellLine|Ligand|ECM|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP|Lx", colnames(l3), value=TRUE)
+  l3Names <- grep("Barcode|Well|CellLine|Ligand|ECM|Endpoint488|Endpoint555|Endpoint647|EndpointDAPI|ECMp|MEP|Lx|PinDiameter", colnames(l3), value=TRUE)
   #Merge back in the replicate metadata
   mDT <- l3[,l3Names,keyby="Ligand,ECMp,Barcode", with=FALSE]
   setkey(mDT,Ligand,ECMp,Barcode)
