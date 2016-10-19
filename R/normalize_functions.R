@@ -501,7 +501,7 @@ createRUVM <- function(dt)
   #Indicate the replicate ligands
   for(ligand in colnames(M)){
     #Put a 1 in the rownames that contain the column name
-    M[grepl(paste0(ligand,"$"),rownames(M)),colnames(M)==ligand] <- 1
+    M[ligand==gsub(".*_","",rownames(M)),colnames(M)==ligand] <- 1
   }
   return(M)
 }
