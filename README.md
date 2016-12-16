@@ -8,3 +8,11 @@ The cells are stained with up to four antibodies that typically target DNA and s
 population or cell level using quantitative immunofluroescence.
 
 The MEMA package functions merge the experiment metadata with the imaging data, perform a bivariate loess-based QA and implement several normalization methods.
+
+The MEMA package can be downloaded and installed from this repo with the commands:  
+
+library(devtools)
+install_github("markdane/MEMA")  
+
+
+
