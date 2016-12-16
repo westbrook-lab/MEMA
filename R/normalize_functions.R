@@ -253,8 +253,8 @@ normRUVLoessResiduals <- function(dt, k){
   # M <- rbind(Mc,Ml)
   # M <- M[order(rownames(M)),]
   #Create the M matrix which denotes replicates
-  M <- createRUVM(srDT)
-  
+  M <- createRUVMGeneral(srDT)
+
   #Make a list of matrices that hold signal and residual values
   srmList <- lapply(signalNames, function(signalName, dt){
     srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
@@ -293,12 +293,7 @@ normRUVLoessResiduals <- function(dt, k){
     dtRUVLoess <- loessNormArray(dt)
   })
   
-  # #Add Loess normalized values for each Raw signal
-  # RUVLoessList <- lapply(srmERUVList, function(dt){
-  #   dt$SignalName <- sub("RUV","",dt$SignalName)
-  #   dtLoess <- loessNormArray(dt)
-  # })
-  
+
   #Combine the normalized signal into one data.table
   #with one set of metadata
   signalDT <- do.call(cbind,lapply(RUVLoessList, function(dt){
