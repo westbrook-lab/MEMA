@@ -235,25 +235,9 @@ normRUVLoessResiduals <- function(dt, k){
   
   #Add to carry metadata into matrices
   srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
- 
-  # #Set up the M Matrix to denote replicates
-  # nrControlWells <- sum(grepl("FBS",unique(srDT$BWL[srDT$SignalType=="Signal"])))
-  # nrLigandWells <- length(unique(srDT$BWL[srDT$SignalType=="Signal"]))-nrControlWells
-  # M <-matrix(0, nrow = length(unique(srDT$BWL[srDT$SignalType=="Signal"])), ncol = nrLigandWells+1)
-  # rownames(M) <- unique(srDT$BWL[srDT$SignalType=="Signal"])
-  # #Indicate the control wells in the last column
-  # Mc <- M[grepl("FBS",rownames(M)),]
-  # Mc[,ncol(Mc)] <-1L
-  # #Subset to the ligand wells and mark as non-replicate
-  # Ml <- M[!grepl("FBS",rownames(M)),]
-  # for(i in 1:nrLigandWells) {
-  #   Ml[i,i] <- 1
-  # }
-  # #Add the replicate wells and restore the row order
-  # M <- rbind(Mc,Ml)
-  # M <- M[order(rownames(M)),]
+  srDT$BW <- paste(srDT$Barcode, srDT$Well, sep="_") 
   #Create the M matrix which denotes replicates
-  M <- createRUVMGeneral(srDT)
+  M <- createRUVMGeneral(srDT, unitID = "BW", uniqueID = "Ligand")
 
   #Make a list of matrices that hold signal and residual values
   srmList <- lapply(signalNames, function(signalName, dt){

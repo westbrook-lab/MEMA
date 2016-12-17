@@ -28,11 +28,11 @@ createRUVM <- function(dt)
   M <-matrix(0, nrow = nrUnits, ncol = nrUniqueLigands)
   rownames(M) <- unique(dt$BWL[dt$SignalType=="Signal"])
   colnames(M) <- unique(dt$Ligand[dt$SignalType=="Signal"])
-  gsub(".*_","",(rownames(M)))
+  rownames(M) <- gsub(".*_","",(rownames(M)))
   #Indicate the replicate ligands
   for(ligand in colnames(M)){
     #Put a 1 in the rownames that contain the column name
-    M[grepl(ligand,rownames(M)),colnames(M)==ligand] <- 1
+    M[ligand == rownames(M),colnames(M)==ligand] <- 1
   }
   #Replace any pipe symbols in the ligand names
   colnames(M) <- gsub("pipe","|",colnames(M))
@@ -61,6 +61,11 @@ createRUVMGeneral <- function(dt, unitID="BWL", uniqueID="Ligand")
   if(!unitID %in% colnames(dt))stop(paste("The data.table to be normalized must have a", unitID, "column"))
   if(!uniqueID %in% colnames(dt))stop(paste("The data.table to be normalized must have a",uniqueID,"column"))
   if(!"SignalType" %in% colnames(dt))stop("The data.table to be normalized must have a SignalType column")
+  #Create a dataframe with each row a unique unit name and a 2nd column with values that classify the unit
+  Mdf <- data.table(UnitID=unique(dt[[unitID]]),stringsAsFactors = FALSE)
+  tmp <- merge(Mdf,dt, by.x="UnitID",by.y=unitID)
+  t2 <- tmp[,]
+  ##Debug here....
   #Replace any pipe symbols in the ligand names
   dt[[uniqueID]] <- gsub("[/|]","pipe",dt[[uniqueID]])
   dt[[unitID]] <- gsub("[/|]","pipe",dt[[unitID]])
