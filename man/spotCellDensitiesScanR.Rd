@@ -17,4 +17,3 @@ A numeric vector of length nrow(spot) with the cell density values
 \description{
 Calculate the neighborhood density around each cell
 }
-

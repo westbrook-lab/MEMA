@@ -9,4 +9,3 @@ normRUVLoessResidualsCSx2(dt, k)
 \description{
 Apply RUV and Loess Normalization to the common signals in a dataset
 }
-

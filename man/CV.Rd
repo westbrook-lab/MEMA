@@ -17,4 +17,3 @@ The CV of the non-na values in the x.
 \description{
 Calculates the CV of a numeric vector as the standard deviation over the mean. All NA values are removed from the input vector.
 }
-

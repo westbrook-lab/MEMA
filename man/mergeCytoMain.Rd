@@ -17,4 +17,3 @@ A datatable of the merged data.
 \description{
 \code{mergeCytoMain} merges the Olympus scan^R cytoplasmic and main datatables. The Object.ID in the main datatable is merged with Parent.Object.ID..MO in the cyto datatable.
 }
-

@@ -18,4 +18,3 @@ A wrapper function for \code{normRZSWellsWithinPlate} that selects the
 \code{_CP_|_QI_|_PA_|SpotCellCount|Lineage} columns of dt if they exist and 
 normalizes them on a plate basis
 }
-

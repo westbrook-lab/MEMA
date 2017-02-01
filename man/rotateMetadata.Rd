@@ -15,4 +15,3 @@ The same data.table rotated 180 degrees in array space. The ArrayRow, Arraycolum
 \description{
 Rotate the metadata 180 degrees in Array space
 }
-

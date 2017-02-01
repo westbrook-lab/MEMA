@@ -14,4 +14,3 @@ Perform RUV removal of unwanted variations
 This function is written by Johann Gagnon-Bartsch and will become part of the
 ruv package.
 }
-

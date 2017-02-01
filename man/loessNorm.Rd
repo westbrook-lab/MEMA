@@ -9,4 +9,3 @@ loessNorm(Value, Residual, ArrayRow, ArrayColumn)
 \description{
 Loess normalize an array using the spatial residuals
 }
-

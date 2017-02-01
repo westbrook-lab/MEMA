@@ -16,4 +16,3 @@ cellNeighbors(spot, radius = (max(spot$Nuclei_CP_AreaShape_Center_X) -
 \description{
 Count the number of neigbors around a nuclei
 }
-

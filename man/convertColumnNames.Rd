@@ -15,4 +15,3 @@ DT The same data.table with duplicated columns, invalid column name characters a
 \description{
 Convert column names in a data.table
 }
-

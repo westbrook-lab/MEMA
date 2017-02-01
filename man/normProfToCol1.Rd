@@ -17,4 +17,3 @@ The input dataframe of datatable with a normedProliferation column that has the 
 \description{
 Normalize the proliferation ratio signal to the collagen 1 values
 }
-

@@ -2,17 +2,20 @@
 % Please edit documentation in R/MEMA_Test_Exp_Functions.R
 \name{summarizeToSpot}
 \alias{summarizeToSpot}
-\title{Summarize cell data to spot level}
+\title{Summarize cell level data to the spot level}
 \usage{
-summarizeToSpot(cd)
+summarizeToSpot(cDT, lthresh = lthresh, seNames = NULL)
 }
 \arguments{
-\item{cd}{A datatable of cell level data to be summarized.}
-}
-\value{
-A datatable of the spot level data.
+\item{cDT}{The datatable of cell level data to be summarized}
+
+\item{lthresh}{The threshold used in the loess model to define low cell count
+regions
+@return A datatable of spot-level, median summarized data with standard error values and 
+metadata}
 }
 \description{
-\code{summarizeToSpot} summarizes cell level data to the spot level.
+Median summarize the cell level normalized values and the most biologically 
+interpretable raw data at each spot, calculate the standard errors and add
+SE columns for all median summarized data
 }
-

@@ -9,4 +9,3 @@ calcResidual(x)
 \description{
 Calculate the residuals from the median of a vector of numeric values
 }
-

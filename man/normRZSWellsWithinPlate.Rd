@@ -27,4 +27,3 @@ subtracting the median of DT[[value]] of all baseECM spots in the
 baseL wells, then divides the result by the MAD*1.48 of all baseECM spots in
 the baseL wells
 }
-

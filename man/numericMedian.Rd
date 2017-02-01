@@ -15,4 +15,3 @@ The median of x as a numeric value
 \description{
 \code{numericMedian} is a helper function for use within data.table that ensure the all medians are returned as numeric instead of numeric or integer values.
 }
-

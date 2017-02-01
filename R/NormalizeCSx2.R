@@ -49,7 +49,7 @@ normRUVLoessResidualsCS <- function(dt, k){
   M <- M[order(rownames(M)),]
   
   srmList <- lapply(signalNames, function(signalName, dt){
-    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
+    srm <- signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
     return(srm)
   },dt=srDT)
   
@@ -154,7 +154,7 @@ normRUVLoessResidualsCSx2 <- function(dt, k){
   M <- M[order(rownames(M)),]
   
   srmList <- lapply(signalNames, function(signalName, dt){
-    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
+    srm <- signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
     return(srm)
   },dt=srDT)
   

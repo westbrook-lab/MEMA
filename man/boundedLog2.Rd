@@ -9,4 +9,3 @@ boundedLog2(x)
 \description{
 Utility function that returns log2 with lower non-infinite bound
 }
-

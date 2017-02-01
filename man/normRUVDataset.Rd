@@ -9,4 +9,3 @@ normRUVDataset(dt, k)
 \description{
 Apply the RUV algortihm
 }
-

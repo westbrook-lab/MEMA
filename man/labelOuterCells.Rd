@@ -17,4 +17,3 @@ A logical vector the length of x with a TRUE value for the Outer cells
 \description{
 \code{labelOuterCells} Determine if a cell is an Outer cell in the spot
 }
-

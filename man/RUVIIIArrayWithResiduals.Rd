@@ -10,4 +10,3 @@ RUVIIIArrayWithResiduals(k, Y, M, cIdx, signalName, verboseDisplay = FALSE)
 Assumes there are signal values in the first half of each row
 and residuals in the second half
 }
-

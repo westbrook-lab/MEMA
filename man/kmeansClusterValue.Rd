@@ -17,4 +17,3 @@ The cluster assignments for x using the base kmeans command.
 \description{
 \code{kmeansClusterValue} is a wrapper function for perfoming kmeans clustering
 }
-

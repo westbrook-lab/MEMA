@@ -74,3 +74,60 @@ convertColumnNames <- function (DT) {
 #'
 #'@export
 numericMedian <- function(x) as.numeric(median(x))
+
+#'
+#'@export
+compressHA <- function(x){
+  x <- gsub("(hyaluronic_acid_greater_than_500kDa)","HA>500kDa",x)
+  x <- gsub("(hyaluronic_acid_less_than_500kDa)","HA<500kDa",x)
+  x <- gsub("hyaluronicacid","HA",x)
+  x <- gsub("lessthan","<",x)
+  x <- gsub("greaterthan",">",x)
+  return(x)
+}
+
+#'
+#'@export
+processan2omero <- function (fileNames) {
+  rbindlist(lapply(fileNames, function(fn){
+    #Process each file separately
+    dt <- fread(fn,header = TRUE)
+    
+    #Rename to preprocessing pipeline variable names
+    setnames(dt,"OSpot","Spot")
+    setnames(dt,"PlateID","Barcode")
+    setnames(dt,"395nm","EndpointDAPI")
+    setnames(dt,"488nm","Endpoint488")
+    setnames(dt,"555nm","Endpoint555")
+    setnames(dt,"640nm","Endpoint647")
+    setnames(dt,"750nm","Endpoint750")
+    #Shorten and combine Annot names
+    dt$CellLine <- gsub("_.*","",dt$CellLine)
+    dt$ECM1 <- compressHA(dt$ECM1)
+    dt$ECM2 <- compressHA(dt$ECM2)
+    dt$ECM3 <- compressHA(dt$ECM3)
+    #Chain ECM proteins if the second one is not COL1
+    dt$ECMp <-paste0(gsub("_.*","",dt$ECM1),"_",gsub("_.*","",dt$ECM2),"_",gsub("_.*","",dt$ECM3)) %>%
+      gsub("_NA","",.) %>%
+      gsub("_COL1|_$","",.)
+    #Chain ligands
+    dt$Ligand <-paste0(gsub("_.*","",dt$Ligand1),"_",gsub("_.*","",dt$Ligand2)) %>%
+      gsub("_NA","",.)
+    dt$MEP <- paste0(dt$ECMp,"_",dt$Ligand)
+    dt$Drug <- gsub("_.*","",dt$Drug1)
+    dt$MEP_Drug <-paste0(dt$MEP,"_",dt$Drug)
+    dt$EndpointDAPI <-gsub("_.*","",dt$EndpointDAPI)
+    dt$Endpoint488 <-gsub("_.*","",dt$Endpoint488)
+    dt$Endpoint555 <-gsub("_.*","",dt$Endpoint555)
+    dt$Endpoint647 <-gsub("_.*","",dt$Endpoint647)
+    #Add a WellSpace spot index that recognizes the arrays are rotated 180 degrees
+    dt$PrintSpot <- dt$Spot
+    nrArrayRows <- max(dt$ArrayRow)
+    nrArrayColumns <- max(dt$ArrayColumn)
+    dt$PrintSpot[grepl("B", dt$Well)] <- (nrArrayRows*nrArrayColumns+1)-dt$PrintSpot[grepl("B", dt$Well)]
+    return(dt)
+    #  }, mc.cores=max(4, detectCores())))
+  }))
+  
+}
+

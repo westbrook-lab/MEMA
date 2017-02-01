@@ -17,4 +17,3 @@ A numeric vector that is \code{DT[[value]]} dvided by its median
 \description{
 Median normalize a vector
 }
-

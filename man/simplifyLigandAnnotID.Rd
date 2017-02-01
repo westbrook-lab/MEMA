@@ -17,4 +17,3 @@ a vector with the ligand and the last string of each annotID pasted with a _
 \description{
 Create a short display version of the LigandAnnotID
 }
-

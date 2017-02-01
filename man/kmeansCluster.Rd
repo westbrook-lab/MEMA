@@ -19,4 +19,3 @@ Cluster assignments of length nrow(x)for the value column based on a kmeans thre
 \description{
 Returns cluster assignments for intensity values based on a control ligand
 }
-

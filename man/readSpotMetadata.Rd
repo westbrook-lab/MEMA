@@ -21,4 +21,3 @@ A dataframe with the contents of each spot in the gal file. The spots
 \code{readSpotMetadata} returns a dataframe of the contents in a gal file and
 adds array indices.
 }
-

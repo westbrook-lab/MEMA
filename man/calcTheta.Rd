@@ -17,4 +17,3 @@ The theta value of the X and y converted to polar coordinates.
 \description{
 Return the polar coordinate theta value that starts at 0 along the positive Y axis and increases to 360 in a clockwise direction.
 }
-

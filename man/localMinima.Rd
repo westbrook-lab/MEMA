@@ -9,4 +9,3 @@ localMinima(x, probs = c(0.2, 0.8))
 \description{
 Find a local minima appropriate for classiying a vector of numbers
 }
-

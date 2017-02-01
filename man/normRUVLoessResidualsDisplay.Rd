@@ -9,4 +9,3 @@ normRUVLoessResidualsDisplay(dt, k)
 \description{
 Apply RUV and Loess Normalization to the signals in a dataset
 }
-

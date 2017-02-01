@@ -18,4 +18,3 @@ A character vector of the well names
 \code{wellAN} is a convenience function that provides alphanumeric names
 for well plates or arrays.
 }
-

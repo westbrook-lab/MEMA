@@ -9,4 +9,3 @@ loessNormArray(dt)
 \description{
 Loess normalize values within an array
 }
-

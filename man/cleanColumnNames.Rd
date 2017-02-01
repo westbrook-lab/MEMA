@@ -15,4 +15,3 @@ the same datable with spaces in place of periods.
 \description{
 \code{cleanColumnNames} substitues a space for any single period in the colmun names of a datatable. This is useful at the end of an anlaysis to have human readable display names.
 }
-

@@ -21,4 +21,3 @@ A single numeric value that is the proportion of spots below the threshold
 \description{
 Return a QA score based on the number of spots missing or below a threshold
 }
-

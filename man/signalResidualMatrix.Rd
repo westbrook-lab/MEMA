@@ -19,4 +19,3 @@ set of SRC columns are the residuals from the medians of each column and have
 This function reorganizes a data.table into a matrix suitable for
 RUV normalization.
 }
-

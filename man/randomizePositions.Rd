@@ -15,4 +15,3 @@ x with the values randomly ordered
 \description{
 Randomize a vector of values
 }
-

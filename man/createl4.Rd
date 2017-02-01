@@ -18,4 +18,3 @@ Median summarize the spot level normalized values the most biologically
 interpretable raw data at each spot, calculate the standard errors and add
 SE columns for all median summarized data
 }
-

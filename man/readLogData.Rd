@@ -16,4 +16,3 @@ A datatable keyed by Row and Column with Depositions and
 \description{
 Read in and parse an Aushon XML log file
 }
-

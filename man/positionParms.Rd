@@ -27,4 +27,3 @@ http://stackoverflow.com/questions/23018056/convert-cartesian-angles-to-polar-co
 \description{
 Calculate the position-based derived parameters for cell-level data to aid population heterogenaity studies.
 }
-

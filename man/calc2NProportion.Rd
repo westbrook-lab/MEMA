@@ -15,4 +15,3 @@ proportion of cells in x that are in 2N
 \description{
 Calculate the proportion of cells that are classfied as having 2N DNA
 }
-

@@ -17,4 +17,3 @@ A datatable of annotated data that is merged on the Well values.
 \description{
 \code{mergeMetadata} merges the well metadata with data on the well value.
 }
-

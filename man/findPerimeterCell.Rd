@@ -15,4 +15,3 @@ A logical vector the length of x with a TRUE value for the Perimeter cell
 \description{
 \code{findPerimeterCell} Determine the perimeter cell in wedge
 }
-

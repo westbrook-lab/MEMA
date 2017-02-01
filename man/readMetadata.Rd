@@ -15,4 +15,3 @@ a data frame with the data values from each sheet in a column with the name of t
 \description{
 \code{readMetadata} reads well level metadata from an excel file. Each sheet in the file represents a different data type. The name of the sheet will become the name of the column. The contents in the sheet will become the data values. Each sheet is foramtted to match a well plate with the A01 well in the upper left corner. First row and column of each sheet are left as labels. The values start in the second row and column.
 }
-

@@ -17,4 +17,3 @@ The cluster assignments of the values in x using Mclust from the mclust package.
 \description{
 \code{autoMMCluster} uses a Mixture Model to assign clusters.
 }
-

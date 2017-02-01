@@ -9,4 +9,3 @@ logIntensities(dt)
 \description{
 Wrapper function to log intensity values in a data.table
 }
-

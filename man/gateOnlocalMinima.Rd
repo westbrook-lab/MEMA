@@ -9,4 +9,3 @@ gateOnlocalMinima(x, ...)
 \description{
 Gate a vector on a local minima
 }
-

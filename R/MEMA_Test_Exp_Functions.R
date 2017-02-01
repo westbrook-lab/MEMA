@@ -64,41 +64,57 @@ mergeCytoMain<-function(cydt,mdt){
   return(merged)
 }#End mergeCytoMain function
 
-#' Summarize cell data to spot level
-#'
-#' \code{summarizeToSpot} summarizes cell level data to the spot level.
-#' @param cd A datatable of cell level data to be summarized.
-#' @return A datatable of the spot level data.
+#' Summarize cell level data to the spot level
+#' 
+#' Median summarize the cell level normalized values and the most biologically 
+#' interpretable raw data at each spot, calculate the standard errors and add
+#' SE columns for all median summarized data
+#' @param cDT The datatable of cell level data to be summarized
+#' @param lthresh The threshold used in the loess model to define low cell count
+#'  regions
+#'  @return A datatable of spot-level, median summarized data with standard error values and 
+#'  metadata
 #' @export
-summarizeToSpot<-function(cd){
-  #browser()
-  #Summarize the cell level data to the spot level
-  #Create a datatable of the columns to be summariazed
-  intNames<-grep(pattern="(Intensity|Area|Spot|WellCellCount|SpotCellCount|^Well$|Objects|EdUPositivePercent|EdUPositiveProportion)",x=names(cd),value=TRUE)
-  #Get the metadata column names which are unconstrained
-  mdNames<-grep(pattern="(Intensity|Area|WellCellCount|Object.ID|Parent.Object.ID..MO|Elongation.Factor|Circularity.Factor|Perimeter|Max.Feret.Diameter|Center.X|X|Center.Y|Y|Position|SpotCellCount|EdUPositive|EdUCL|EdUPos2N4N)",x=names(cd),value=TRUE,invert=TRUE)
-  keep<-cd[,intNames,with=FALSE]
-  keepMd<-cd[,mdNames,with=FALSE]
-  #Take the mean of each column stratified by spot
-  keyCols<-c('Spot','Well')
-  wd<-keep[,lapply(.SD,mean),by=keyCols]
-
-  #Get the unique metadata value for each spot
-  md<-keepMd[,lapply(.SD,unique),by=keyCols]
-  data.table::setkeyv(wd,keyCols)
-  data.table::setkeyv(md,keyCols)
-  all<-wd[md]
-  #Calculate CVs for each set of replicates
-  cvNames<-grep(pattern="(Intensity|Area|WellCellCount|SpotCellCount|EdUPositivePercent|EdUPositiveProportion|Name|^Well)",x=names(cd),value=TRUE)
-  cvKeep<-all[,cvNames,with=FALSE]
-  repSpots<-c('Name','Well')
-  cv<-cvKeep[,lapply(.SD,CV),by=repSpots]
-  data.table::setnames(cv,colnames(cv), paste0("CV.",colnames(cv)))
-  data.table::setkey(cv,CV.Well,CV.Name)
-  data.table::setkey(all,Well,Name)
-  all<-all[cv]
-  return(all)
+summarizeToSpot <- function(cDT, lthresh = lthresh, seNames=NULL){
+  #Summarize cell data to medians of the spot parameters
+  parameterNames<-grep(pattern="(Children|_CP_|_PA_)",x=names(cDT),value=TRUE)
+  
+  #Remove spot-normalized or summarized parameters
+  parameterNames <- grep("SpotNorm|Wedge|Sparse|OuterCell|Center|^Nuclei_PA_Gated_EduPositive$",parameterNames,value=TRUE,invert=TRUE)
+  
+  slDT<-cDT[,lapply(.SD, numericMedian), by="Barcode,Well,Spot", .SDcols=parameterNames]
+  #Use seNames to select the parameters that get SE values
+  if(!is.null(seNames)){
+    seNamesPattern<-paste(seNames,collapse="|")
+    seNames <- grep(seNamesPattern,parameterNames,value=TRUE)
+    slDTse <- cDT[,lapply(.SD,se), by="Barcode,Well,Spot", .SDcols=seNames]
+  } else{
+    slDTse <- cDT[,lapply(.SD,se), by="Barcode,Well,Spot"]
+  }
+  
+  #Add _SE to the standard error column names
+  setnames(slDTse, grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE), paste0(grep("Barcode|^Well$|^Spot$",colnames(slDTse), value = TRUE, invert = TRUE),"_SE"))
+  
+  #Merge back in the spot and well metadata
+  metadataNames <- grep("(Row|Column|PrintOrder|Block|^ID$|Array|CellLine|Ligand|Drug|Endpoint|ECMp|MEP|Well_Ligand|ECM|ImageID|Barcode|^Well$|^PrintSpot$|^Spot$|Pin|Lx)", x=colnames(cDT), value=TRUE)
+  setkey(cDT,Barcode, Well,Spot)
+  mDT <- cDT[,metadataNames,keyby="Barcode,Well,Spot", with=FALSE]
+  slDT <- mDT[slDT, mult="first"]
+  #Merge in the standard err values
+  setkey(slDT, Barcode, Well, Spot)
+  setkey(slDTse, Barcode, Well, Spot)
+  slDT <- slDT[slDTse]
+  #Add a count of replicates
+  slDT <- slDT[,Spot_PA_ReplicateCount := .N,by="Ligand,ECMp"]
+  
+  #Add the loess model of the SpotCellCount on a per well basis
+  slDT <- slDT[,Spot_PA_LoessSCC := loessModel(.SD, value="Spot_PA_SpotCellCount", span=.5), by="Barcode,Well"]
+  
+  #Add well level QA Scores to spot level data
+  slDT <- slDT[,QAScore := calcQAScore(.SD, threshold=lthresh, maxNrSpot = max(cDT$ArrayRow)*max(cDT$ArrayColumn),value="Spot_PA_LoessSCC"),by="Barcode,Well"]
+  return(slDT)
 }
+
 
 
 #' Returns a character vector of alphanumeric well names

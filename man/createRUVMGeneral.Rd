@@ -27,4 +27,3 @@ one column for each unique unit type
 Each row will have one 1 to indicate the unit type
 all other values will be 0
 }
-

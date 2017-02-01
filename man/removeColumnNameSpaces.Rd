@@ -15,4 +15,3 @@ the same datable with spaces in the column names removed.
 \description{
 \code{removeColumnNameSpaces} remove spaces in the colmun names of a datatable. This is useful to compare plates with slight differences in the metadata naming.
 }
-

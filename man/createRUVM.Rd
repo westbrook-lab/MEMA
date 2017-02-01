@@ -2,6 +2,7 @@
 % Please edit documentation in R/createRUVM.R, R/normalize_functions.R
 \name{createRUVM}
 \alias{createRUVM}
+\alias{createRUVM}
 \title{Create an M matrix for the RUV normalization}
 \usage{
 createRUVM(dt)
@@ -30,4 +31,3 @@ one column for each unique unit type
 Each row will have a 1 to indicate the unit type
 all other values will be 0
 }
-

@@ -20,4 +20,3 @@ a vector of median normalized loess values of the signal
 \description{
 Create a median normalized loess model of an array
 }
-

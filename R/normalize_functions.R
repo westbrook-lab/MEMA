@@ -484,3 +484,17 @@ createRUVM <- function(dt)
   }
   return(M)
 }
+
+#'
+#'@export
+spotNorm <- function(x){
+  return(x/median(x,na.rm=TRUE))
+}
+
+#'
+#'@export
+gateOnQuantile <- function(x,probs){
+  gatedClass <- integer(length(x))
+  gatedClass[x>quantile(x,probs=probs,na.rm=TRUE)]<-1
+  return(gatedClass)
+}
