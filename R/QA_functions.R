@@ -41,3 +41,13 @@ calcQAScore <- function(DT, threshold, maxNrSpot=700, value){
   QAScore <- (nrow(DT)-sum(DT[,value,with=FALSE] < threshold))/maxNrSpot
   return (QAScore)
 }
+
+#'
+#' @export
+RZScore <- function(x){
+  xMedian <- median(x, na.rm=TRUE)
+  xMad <-mad(x, na.rm=TRUE)
+  if(xMad == 0){ zscores <- NA
+  } else zscores <- (x-xMedian)/xMad
+  return(zscores)
+}

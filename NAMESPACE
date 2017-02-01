@@ -2,6 +2,7 @@
 
 export(RUVIII)
 export(RUVIIIArrayWithResiduals)
+export(RZScore)
 export(addOmeroIDs)
 export(addRLEs)
 export(autoMMCluster)
