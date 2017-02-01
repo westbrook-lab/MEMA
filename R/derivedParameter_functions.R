@@ -219,3 +219,10 @@ calc2NProportion <- function(x){
   } else proportion2N <- 0
   return(proportion2N)
 }
+
+#'
+#'@export
+#Calculate the proportions in the gates
+calcProportion <- function(x){
+  sum(x)/length(x)
+}

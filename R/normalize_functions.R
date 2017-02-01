@@ -217,12 +217,12 @@ normRUVLoessResidualsDisplay <- function(dt, k){
 #'Apply RUV and Loess Normalization to the signals in a dataset
 #' @export
 normRUVLoessResiduals <- function(dt, k){
-  setkey(dt,Barcode,Well,Ligand,ECMp)
-  metadataNames <- "Barcode|Well|^Spot$|^PrintSpot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$"
+  setkey(dt,CellLine,Barcode,Well,Ligand,Drug,ECMp)
+  metadataNames <- "^CellLine$|Barcode|^Well$|^Spot$|^PrintSpot$|ArrayRow|ArrayColumn|^ECMp$|^Ligand$|^Drug$"
   signalNames <- grep(metadataNames,colnames(dt),invert=TRUE, value=TRUE)
   
   #Add residuals from subtracting the biological medians from each value
-  residuals <- dt[,lapply(.SD,calcResidual), by="Barcode,Well,Ligand,ECMp", .SDcols=signalNames]
+  residuals <- dt[,lapply(.SD,calcResidual), by="CellLine,Barcode,Well,Ligand,Drug,ECMp", .SDcols=signalNames]
   #Add within array location metadata
   residuals$Spot <- as.integer(dt$Spot)
   residuals$PrintSpot <- as.integer(dt$PrintSpot)
@@ -234,14 +234,16 @@ normRUVLoessResiduals <- function(dt, k){
   srDT <- rbind(dt,residuals)
   
   #Add to carry metadata into matrices
-  srDT$BWL <- paste(srDT$Barcode, srDT$Well, srDT$Ligand, sep="_") 
-  srDT$BW <- paste(srDT$Barcode, srDT$Well, sep="_") 
+  srDT$BWLD <- paste(srDT$Barcode, srDT$Well, srDT$Ligand,  srDT$Drug, sep="_") 
+  
   #Create the M matrix which denotes replicates
-  M <- createRUVMGeneral(srDT, unitID = "BW", uniqueID = "Ligand")
-
+  M <- createRUVM(srDT, replicateCols=c("CellLine","Ligand","Drug"))
+  
+  #Add BWL but need to check if this can be only BW
+  srDT$BW <- paste(srDT$Barcode, srDT$Well, sep="_") 
   #Make a list of matrices that hold signal and residual values
   srmList <- lapply(signalNames, function(signalName, dt){
-    srm <- MEMA:::signalResidualMatrix(dt[,.SD, .SDcols=c("BWL", "PrintSpot", "SignalType", signalName)])
+    srm <- signalResidualMatrix(dt[,.SD, .SDcols=c("BW", "PrintSpot", "SignalType", signalName)])
     return(srm)
   },dt=srDT)
   names(srmList) <- signalNames
@@ -253,45 +255,32 @@ normRUVLoessResiduals <- function(dt, k){
     resStart <- ncol(Y)/2+1
     cIdx=resStart:ncol(Y)
     nY <- RUVIIIArrayWithResiduals(k, Y, M, cIdx, srmName) #Normalize the spot level data
-    nY$k <- k
     nY$SignalName <- paste0(srmName,"RUV")
     setnames(nY,srmName,paste0(srmName,"RUV"))
-    nY[[srmName]] <- as.vector(Y[,1:(resStart-1)])
+    #nY[[srmName]] <- as.vector(Y[,1:(resStart-1)]) #Add back in the raw signal (may not be needed)
     return(nY)
   }, srmList=srmList, M=M, k=k)
   
-  #Reannotate with ECMp, MEP, ArrayRow and ArrayColumn
-  ECMpDT <- unique(srDT[,list(Well,PrintSpot,Spot,ECMp,ArrayRow,ArrayColumn)])
-  
+  #Reannotate with ECMp, Drug, ArrayRow and ArrayColumn as needed for loess normalization
+  ECMpDT <- unique(srDT[,list(Well,PrintSpot,Spot,ECMp,Drug, ArrayRow,ArrayColumn)])
   srmERUVList <- lapply(srmRUVList, function(dt,ECMpDT){
+    dt$Well <- gsub(".*_","",dt$BW)
     setkey(dt,Well,PrintSpot)
     setkey(ECMpDT,Well,PrintSpot)
     dtECMpDT <- merge(dt,ECMpDT)
-    dtECMpDT$MEP <- paste(dtECMpDT$ECMp,dtECMpDT$Ligand,sep="_")
     return(dtECMpDT)
   },ECMpDT=ECMpDT)
-  
   
   #Add Loess normalized values for each RUV normalized signal
   RUVLoessList <- lapply(srmERUVList, function(dt){
     dtRUVLoess <- loessNormArray(dt)
   })
   
-
-  #Combine the normalized signal into one data.table
-  #with one set of metadata
-  signalDT <- do.call(cbind,lapply(RUVLoessList, function(dt){
-    sdt <- dt[,grep("_CP_|_PA_|Cells|Reference",colnames(dt)), with=FALSE]
-  }))
+  #Combine the normalized signals and metadata
+  signalDT <- Reduce(merge,RUVLoessList)
   
-  signalDT <- signalDT[,grep("RUV$",colnames(signalDT),invert=TRUE,value=TRUE), with=FALSE] 
-  signalMetadataDT <- cbind(RUVLoessList[[1]][,grep("_CP_|_PA_|Cells|Reference",colnames(RUVLoessList[[1]]), invert=TRUE), with=FALSE], signalDT)
-  signalMetadataDT <- signalMetadataDT[,SignalName := NULL]
-  signalMetadataDT <- signalMetadataDT[,mel := NULL]
-  signalMetadataDT <- signalMetadataDT[,Residual := NULL]
-  return(signalMetadataDT)
+  return(signalDT)
 }
-
 
 #' Loess normalize an array using the spatial residuals
 loessNorm <- function(Value,Residual,ArrayRow,ArrayColumn){
@@ -309,16 +298,18 @@ loessNormArray <- function(dt){
   signalName <- unique(dt$SignalName)
   setnames(dt,signalName,"Value")
   #Get the median of the replicates within the array
-  dt <- dt[,mel := median(Value), by=c("BWL","ECMp")]
+  dt <- dt[,mel := median(Value), by=c("BW","ECMp","Drug")]
   #Get the residuals from the spot median
   dt <- dt[,Residual := Value-mel]
   #Subtract the loess model of each array's residuals from the signal
-  dt <- dt[, ValueLoess:= loessNorm(Value,Residual,ArrayRow,ArrayColumn), by="BWL"]
-  setnames(dt,"Value", signalName)
+  dt <- dt[, ValueLoess:= loessNorm(Value,Residual,ArrayRow,ArrayColumn), by="BW"]
   setnames(dt,"ValueLoess", paste0(signalName,"Loess"))
+  BW <- "BW"
+  PrintSpot <- "PrintSpot"
+  dt <- dt[,c(paste0(signalName,"Loess"),BW,PrintSpot), with=FALSE]
+  setkey(dt,BW,PrintSpot)
   return(dt)
 }
-
 
 #' Calculate the residuals from the median of a vector of numeric values
 #' @export
@@ -338,29 +329,25 @@ RUVIIIArrayWithResiduals <- function(k, Y, M, cIdx, signalName, verboseDisplay=F
   #Remove residuals
   nY <- nY[,1:(ncol(nY)/2)]
   #melt matrix to have Spot and Ligand columns
-  nYm <- melt(nY, varnames=c("BWL","PrintSpot"), value.name=signalName)
-  nYm$BWL <- as.character(nYm$BWL)
-  #nYm$SRC <- as.character(nYm$SRC)
-  splits <- limma::strsplit2(nYm$BWL,split = "_")
-  nYm$Barcode <- splits[,1]
-  nYm$Well <- splits[,2]
-  nYm$Ligand <- sub(".*?_","",sub(".*?_","",nYm$BWL))
+  nYm <- melt(nY, varnames=c("BW","PrintSpot"), value.name=signalName)
+  nYm$BW <- as.character(nYm$BW)
   if(verboseDisplay){
     return(list(nYm=data.table(nYm), fullAlpha=YRUVIII[["fullalpha"]], W=RUVIII[["W"]]))
   }
   return(data.table(nYm))
 }
 
+
 #' Generate a matrix of signals and residuals
 #' 
 #' This function reorganizes a data.table into a matrix suitable for
 #' RUV normalization.
 #' 
-#'@param dt a data.table with columns named BWL, SRC, SignalType and a column 
-#' named by the unique value in the SignalType column.
-#'@return A numeric matrix with BWL rows and two sets of SERC columns. The second
-#'set of SRC columns are the residuals from the medians of each column and have
+#'@param dt a data.table with columns named BW and PrintSpot followed by one signal column 
+#'@return A numeric matrix with BW rows and two sets of columns. The second
+#'set of columns are the residuals from the medians of each column and have
 #'"_Rel" appended to their names.
+#' @export
 signalResidualMatrix <- function(dt){
   signalName <- colnames(dt)[ncol(dt)]
   if(grepl("Logit", signalName)){
@@ -371,11 +358,11 @@ signalResidualMatrix <- function(dt){
     fill <- 0
   }
   
-  dts <- data.table(dcast(dt[dt$SignalType=="Signal",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
-  dtr <- data.table(dcast(dt[dt$SignalType=="Residual",], BWL~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
-  rowNames <- dts$BWL
-  dts <- dts[,BWL := NULL]
-  dtr <- dtr[,BWL:=NULL]
+  dts <- data.table(dcast(dt[dt$SignalType=="Signal",], BW~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
+  dtr <- data.table(dcast(dt[dt$SignalType=="Residual",], BW~PrintSpot, value.var=signalName, fill=fill, na.rm=TRUE))
+  rowNames <- dts$BW
+  dts <- dts[,BW := NULL]
+  dtr <- dtr[,BW:=NULL]
   setnames(dtr,colnames(dtr),paste0(colnames(dtr),"_Rel"))
   dtsr <- cbind(dts,dtr)
   srm <- matrix(unlist(dtsr),nrow=nrow(dtsr))
@@ -464,24 +451,84 @@ normRUVDataset <- function(dt, k){
 }
 
 #' Create an M matrix for the RUV normalization
-#' that has one row for each unit to be normalized and
-#' one column for each unique unit type
-#' Each row will have a 1 to indicate the unit type
+#' 
+#' Each row is for a unit to be normalized and
+#' each column is a unique replicate type
+#' Each row will have a 1 to indicate the replicate type
 #' all other values will be 0
-createRUVM <- function(dt)
+#' @param dt The datatable to be normalized that has columns Barcode, Well and 
+#' those in the replicateCols parameter.
+#' @param replicateCols A character vector of column names in dt that define a replicate well.
+#' @return A matrix suitable for defining the dataset structure in RUV normalization
+#' @export
+createRUVM <- function(dt,replicateCols=c("CellLine","Ligand","Drug"))
 {
+  #Add a column that defines what makes a well a replicate
+  dt$ReplicateID <- do.call(paste, c(dt[,replicateCols, with=FALSE], sep="_"))
+  #Add a similar column that binds in the barcode and well locations
+  dt$UnitID <- do.call(paste, c(dt[,c("Barcode","Well",replicateCols), with=FALSE], sep="_"))
   #Set up the M Matrix to denote replicate ligand wells
-  nrUnits <- length(unique(dt$BWL[dt$SignalType=="Signal"]))
-  nrUniqueLigands <- length(unique(dt$Ligand[dt$SignalType=="Signal"]))
-  M <-matrix(0, nrow = nrUnits, ncol = nrUniqueLigands)
-  rownames(M) <- unique(dt$BWL[dt$SignalType=="Signal"])
-  colnames(M) <- unique(dt$Ligand[dt$SignalType=="Signal"])
-  gsub(".*_","",(rownames(M)))
+  nrUnits <- length(unique(dt$UnitID[dt$SignalType=="Signal"]))
+  nrReplicateIDs <- length(unique(dt$ReplicateID[dt$SignalType=="Signal"]))
+  M <-matrix(0, nrow = nrUnits, ncol = nrReplicateIDs)
+  rownames(M) <- unique(dt$UnitID[dt$SignalType=="Signal"])
+  colnames(M) <- unique(dt$ReplicateID[dt$SignalType=="Signal"])
+  rownames(M) <- gsub("[|]","pipe",rownames(M))
+  colnames(M) <- gsub("[|]","pipe",colnames(M))
   #Indicate the replicate ligands
-  for(ligand in colnames(M)){
+  for(replicate in colnames(M)){
     #Put a 1 in the rownames that contain the column name
-    M[ligand==gsub(".*_","",rownames(M)),colnames(M)==ligand] <- 1
+    M[grepl(replicate,rownames(M)),colnames(M)==replicate] <- 1
   }
+  rownames(M) <- gsub("pipe","|",rownames(M))
+  colnames(M) <- gsub("pipe","|",colnames(M))
+  return(M)
+}
+
+#Create and test generating the RUV M matrix
+#' Create an M matrix for the RUV normalization
+#' 
+#' The M matrix holds the structure of the dataset in RUV normalization.
+#' There is one row for each unit to be normalized and
+#' one column for each unique unit type
+#' Each row will have one 1 to indicate the unit type
+#' all other values will be 0
+#' @param dt The datatable to be normalized. There must be a SignalType column 
+#' where a value of "Signal" denotes which rows should be included in the M matrix.
+#' @param unitID The column name that identifies the names of the units to be normalized.
+#' For example, this may have the value BW as the barcode and well can be combined to 
+#' create unique identifiers for a unit of data.
+#' @param uniqueID The column name that uniquely identifies the replicates. For example,
+#' this may have a value of Ligand or LigandDrug depending on the experiment.
+#' @return A datatable with values of 1 and 0 that captures the structure of dt.
+#' @export
+createRUVMGeneral <- function(dt, unitID="BWL", uniqueID="Ligand")
+{
+  if(!unitID %in% colnames(dt))stop(paste("The data.table to be normalized must have a", unitID, "column"))
+  if(!uniqueID %in% colnames(dt))stop(paste("The data.table to be normalized must have a",uniqueID,"column"))
+  if(!"SignalType" %in% colnames(dt))stop("The data.table to be normalized must have a SignalType column")
+  #Create a dataframe with each row a unique unit name and a 2nd column with values that classify the unit
+  Mdf <- data.table(UnitID=unique(dt[[unitID]]),stringsAsFactors = FALSE)
+  tmp <- merge(Mdf,dt, by.x="UnitID",by.y=unitID)
+  t2 <- tmp[,]
+  ##Debug here....
+  #Replace any pipe symbols in the ligand names
+  dt[[uniqueID]] <- gsub("[/|]","pipe",dt[[uniqueID]])
+  dt[[unitID]] <- gsub("[/|]","pipe",dt[[unitID]])
+  #Set up the M Matrix to denote replicate ligand wells
+  nrUnits <- length(unique(dt[[unitID]][dt$SignalType=="Signal"]))
+  nrUniqueIDs <- length(unique(dt[[uniqueID]][dt$SignalType=="Signal"]))
+  M <-matrix(0, nrow = nrUnits, ncol = nrUniqueIDs)
+  rownames(M) <- unique(dt[[unitID]][dt$SignalType=="Signal"])
+  colnames(M) <- unique(dt[[uniqueID]][dt$SignalType=="Signal"])
+  #Indicate the replicate ligands
+  for(uID in rownames(M)){
+    #For each row, put a 1 in column that matches it's uniqueID value
+    M[uID,dt[[uniqueID]][dt[[unitID]]==uID]==colnames(M)] <- 1
+  }
+  #Replace any pipe symbols in the ligand names
+  colnames(M) <- gsub("pipe","|",colnames(M))
+  rownames(M) <- gsub("pipe","|",rownames(M))
   return(M)
 }
 
